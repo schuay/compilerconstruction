@@ -65,6 +65,7 @@ int main(int argc, const char **argv) {
 
     test(x1, sizeofarray(x1));
     test(x2, sizeofarray(x2));
+    test(x2, 0);
     test(x3, sizeofarray(x3));
     test(x4, sizeofarray(x4));
     test(x5, sizeofarray(x5));
