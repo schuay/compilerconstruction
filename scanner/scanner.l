@@ -22,13 +22,14 @@ lexem               ("=<"|[;(),:=*\-+#])
 {comment_start}         BEGIN(comment);
 <comment>{comment_end}  BEGIN(0);
 <comment>.              ;
+<comment><<EOF>>        fprintf(stderr, "Lexical error: open comment at end of file\n"); errors++; yyterminate();
 {keyword}               |
 {lexem}                 printf("%s\n", yytext);
-{hex_number}            printf("num %d\n", strtol(yytext + 1, NULL, 16));
+{hex_number}            printf("num %d\n", strtol(yytext, NULL, 16));
 {dec_number}            printf("num %d\n", strtol(yytext + 1, NULL, 10));
 {identifier}            printf("ident %s\n", yytext);
 {whitespace}            ;
-.                       printf("Lexical error: %s\n", yytext); errors++;
+.                       fprintf(stderr, "Lexical error: %s\n", yytext); errors++;
 
 %%
 
@@ -36,7 +37,7 @@ int main(void) {
     int ret = 0;
     yylex();
     if (errors) {
-        printf("%d error(s) occurred.\n", errors);
+        fprintf(stderr, "%d error(s) occurred.\n", errors);
         ret = 1;
     }
     return ret;
