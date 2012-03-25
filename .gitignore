@@ -1,3 +1,4 @@
 *.o
 *.swp
 lex.yy.c
+.ssh-cfg
