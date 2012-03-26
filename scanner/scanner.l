@@ -21,7 +21,7 @@ lexem               ("=<"|[;(),:=*\-+#])
 
 {comment_start}         BEGIN(comment);
 <comment>{comment_end}  BEGIN(0);
-<comment>.              ;
+<comment>(.|\n)         ;
 <comment><<EOF>>        fprintf(stderr, "Lexical error: open comment at end of file\n"); errors++; yyterminate();
 {keyword}               |
 {lexem}                 printf("%s\n", yytext);
