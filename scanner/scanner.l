@@ -11,7 +11,7 @@ dec_number          &{digit}+
 comment_start       "(*"
 comment_end         "*)"
 whitespace          [ \t\n]
-keyword             ("end"|"return"|"goto"|"if"|"then"|"var"|"not")
+keyword             ("end"|"return"|"goto"|"if"|"then"|"var"|"not"|"and")
 lexem               ("=<"|[;(),:=*\-+#])
 
     int errors = 0;
