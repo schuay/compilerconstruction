@@ -6,7 +6,7 @@ hexdigit            ({digit}|[a-f]|[A-F])
 identifier_start    ("_"|{letter})
 identifier_body     ({identifier_start}|{digit})
 identifier          {identifier_start}{identifier_body}*
-hex_number          {digit}{hexdigit}+
+hex_number          {digit}{hexdigit}*
 dec_number          &{digit}+
 comment_start       "(*"
 comment_end         "*)"
