@@ -3,7 +3,7 @@ TARGET=scanner
 FLEX=flex
 GCC=gcc
 
-SOURCE   = Makefile scanner.l
+SOURCE = Makefile scanner.l
 
 HOST = ub-handin
 REMOTEDIR = abgabe/$(TARGET)
@@ -25,10 +25,6 @@ $(TARGET): lex.yy.c
 
 lex.yy.c: scanner.l
 	$(FLEX) $<
-
-test: $(TARGET)
-	./$(TARGET) < test.u
-	./$(TARGET) < edgecases.u
 
 hand-in: $(SOURCE)
 	@$(ECHO) "Handing in $(SOURCE)..."
