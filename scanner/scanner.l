@@ -6,23 +6,26 @@ hexdigit            ({digit}|[a-f]|[A-F])
 identifier_start    ("_"|{letter})
 identifier_body     ({identifier_start}|{digit})
 identifier          {identifier_start}{identifier_body}*
+ /* The first digit is already part of the number. */
 hex_number          {digit}{hexdigit}*
+ /* A single & is invalid syntax. */
 dec_number          &{digit}+
 comment_start       "(*"
 comment_end         "*)"
+ /* Comments are the shortest section between a starting (* and a closing *).
+    If not closed, the (* is interpreted as 2 lexemes ( and *.
+    Comments can be multiline. A simpler regexp with nongreedy matching could be:
+    {comment_start}(.|\n)*?{comment_end}  */
+comment             {comment_start}(([^*])|([*][^\)]))*{comment_end}
 whitespace          [ \t\n]
 keyword             ("end"|"return"|"goto"|"if"|"then"|"var"|"not"|"and")
 lexem               ("=<"|[;(),:=*\-+#])
 
     int errors = 0;
 
-%x comment
 %%
 
-{comment_start}         BEGIN(comment);
-<comment>{comment_end}  BEGIN(0);
-<comment>(.|\n)         ;
-<comment><<EOF>>        fprintf(stderr, "Lexical error: open comment at end of file\n"); errors++; yyterminate();
+{comment}               ;
 {keyword}               |
 {lexem}                 printf("%s\n", yytext);
 {hex_number}            printf("num %d\n", strtol(yytext, NULL, 16));
