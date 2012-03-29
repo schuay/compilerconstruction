@@ -1,5 +1,24 @@
+%{
+
+    #include <stdio.h>
+    #include <stdlib.h>
+
+    #define YYDEBUG 1
+
+    int yylex();
+    int yyerror(const char *p);
+
+%}
+
+%union {
+    double val;
+    const char *name;
+}
+
 %start program
-%token ID NUM END RETURN GOTO IF THEN VAR NOT AND
+%token <name> ID
+%token <val> NUM
+%token END RETURN GOTO IF THEN VAR NOT AND OPLESSEQ
 %right '='
 %left '+'
 %left '*'
@@ -46,7 +65,7 @@ expr        :   unary
             |   termmul term
             |   termplus term
             |   termand term
-            |   term "=<" term
+            |   term OPLESSEQ term
             |   term '#' term
             ;
 unary       :   NOT unary
@@ -63,3 +82,16 @@ term        :   '(' expr ')'
             |   ID
             |   ID '(' args ')'
             ;
+
+%%
+
+int yyerror(const char *p) {
+    fprintf(stderr, "%s\n", p);
+    exit(2);
+}
+
+int main(void) {
+    yydebug = 1;
+    yyparse();
+    return 0;
+}

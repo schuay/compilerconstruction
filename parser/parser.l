@@ -1,3 +1,7 @@
+%{
+    #include "parser.tab.h"
+%}
+
 letter_lower        [a-z]
 letter_upper        [A-Z]
 letter              ({letter_lower}|{letter_upper})
@@ -18,30 +22,23 @@ comment_end         "*)"
     {comment_start}(.|\n)*?{comment_end}  */
 comment             {comment_start}(([^*])|([*][^\)]))*{comment_end}
 whitespace          [ \t\n]
-keyword             ("end"|"return"|"goto"|"if"|"then"|"var"|"not"|"and")
-lexem               ("=<"|[;(),:=*\-+#])
-
-    int errors = 0;
+lexem               [;(),:=*\-+#]
 
 %%
 
+"end"                   return END;
+"return"                return RETURN;
+"goto"                  return GOTO;
+"if"                    return IF;
+"then"                  return THEN;
+"var"                   return VAR;
+"not"                   return NOT;
+"and"                   return AND;
+"=<"                    return OPLESSEQ;
+{lexem}                 return yytext[0];
+{hex_number}            return NUM;
+{dec_number}            return NUM;
+{identifier}            return ID;
+{whitespace}+           ;
 {comment}               ;
-{keyword}               |
-{lexem}                 printf("%s\n", yytext);
-{hex_number}            printf("num %d\n", strtol(yytext, NULL, 16));
-{dec_number}            printf("num %d\n", strtol(yytext + 1, NULL, 10));
-{identifier}            printf("ident %s\n", yytext);
-{whitespace}            ;
-.                       fprintf(stderr, "Lexical error: %s\n", yytext); errors++;
-
-%%
-
-int main(void) {
-    int ret = 0;
-    yylex();
-    if (errors) {
-        fprintf(stderr, "%d error(s) occurred.\n", errors);
-        ret = 1;
-    }
-    return ret;
-}
+.                       fprintf(stderr, "lexical error: %s\n", yytext); exit(1);
