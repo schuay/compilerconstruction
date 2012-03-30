@@ -1,6 +1,9 @@
 %{
     #include "parser.tab.h"
+    #define YY_USER_ACTION yylloc.first_line = yylloc.last_line = yylineno;
 %}
+
+%option yylineno
 
 letter_lower        [a-z]
 letter_upper        [A-Z]
@@ -41,4 +44,5 @@ lexem               [;(),:=*\-+#]
 {identifier}            return ID;
 {whitespace}+           ;
 {comment}               ;
-.                       fprintf(stderr, "lexical error: %s\n", yytext); exit(1);
+.                       { fprintf(stderr, "ERROR line %d: syntax error '%s'\n",
+                                yylloc.first_line, yytext); exit(1); }

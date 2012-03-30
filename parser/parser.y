@@ -6,14 +6,17 @@
     #define YYDEBUG 1
 
     int yylex();
-    int yyerror(const char *p);
+    void yyerror(const char *p);
 
+    int errcount = 0;
 %}
 
 %union {
     double val;
     const char *name;
 }
+
+%locations
 
 %start program
 %token <name> ID
@@ -36,6 +39,7 @@ pars        :   /* empty */
             ;
 stats       :   /* empty */
             |   stats singlestat ';'
+            |   stats error ';' { yyerrok; }
             ;
 singlestat  :   stat
             |   labeldef singlestat
@@ -85,13 +89,16 @@ term        :   '(' expr ')'
 
 %%
 
-int yyerror(const char *p) {
-    fprintf(stderr, "%s\n", p);
-    exit(2);
+void yyerror(const char *p) {
+    fprintf(stderr, "ERROR line %d: %s\n", yylloc.first_line, p);
+    errcount++;
 }
 
 int main(void) {
     yydebug = 1;
     yyparse();
+    if (errcount > 0) {
+        return 2;
+    }
     return 0;
 }
