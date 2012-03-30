@@ -95,7 +95,7 @@ void yyerror(const char *p) {
 }
 
 int main(void) {
-    yydebug = 1;
+    yydebug = 0;
     yyparse();
     if (errcount > 0) {
         return 2;
