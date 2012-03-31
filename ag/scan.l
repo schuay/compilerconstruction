@@ -1,15 +1,19 @@
 %{
-    #include "gram.tab.h"
+    #include "common.hpp"
+    #include "gram.tab.hpp"
+
     #define YY_USER_ACTION yylloc.first_line = yylloc.last_line = yylineno;
+
+    #ifdef __GNUC__
+    static void yyunput(int c, register char * yy_bp) __attribute__((unused));
+    #endif
 %}
 
 %option yylineno
 
-letter_lower        [a-z]
-letter_upper        [A-Z]
-letter              ({letter_lower}|{letter_upper})
+letter              [a-zA-Z]
 digit               [0-9]
-hexdigit            ({digit}|[a-f]|[A-F])
+hexdigit            ({digit}|[a-fA-F])
 identifier_start    ("_"|{letter})
 identifier_body     ({identifier_start}|{digit})
 identifier          {identifier_start}{identifier_body}*
@@ -29,20 +33,19 @@ lexem               [;(),:=*\-+#]
 
 %%
 
-"end"                   return END;
-"return"                return RETURN;
-"goto"                  return GOTO;
-"if"                    return IF;
-"then"                  return THEN;
-"var"                   return VAR;
-"not"                   return NOT;
-"and"                   return AND;
-"=<"                    return OPLESSEQ;
+end                     return END;
+return                  return RETURN;
+goto                    return GOTO;
+if                      return IF;
+then                    return THEN;
+var                     return VAR;
+not                     return NOT;
+and                     return AND;
+=<                      return OPLESSEQ;
 {lexem}                 return yytext[0];
-{hex_number}            return NUM;
-{dec_number}            return NUM;
-{identifier}            return ID;
+{hex_number}            yylval.val = strtol(yytext, NULL, 16); return NUM;
+{dec_number}            yylval.val = strtol(yytext + 1, NULL, 10); return NUM;
+{identifier}            yylval.sym = syms.insert(yytext); return ID;
 {whitespace}+           ;
 {comment}               ;
-.                       { fprintf(stderr, "ERROR line %d: syntax error '%s'\n",
-                                yylloc.first_line, yytext); exit(1); }
+.                       { fprintf(stderr, "ERROR line %d: '%s'\n", yylloc.first_line, yytext); exit(1); }
