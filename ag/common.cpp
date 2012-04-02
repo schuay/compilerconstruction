@@ -256,15 +256,20 @@ vector<Symbol> BinaryExprAST::collectDefinedSymbols() {
 
 int BinaryExprAST::checkSymbols(Scope *scope) {
     assert(scope != NULL);
+
+    /* lhs is always in the parent scope.  */
+
+    int j = 0;
+    j += m_lhs->checkSymbols(scope);
     
+    /* rhs can start a new (merged) scope in IF statements. */
+
     if (m_op == IF) {
         assert(m_scope != NULL);
         m_scope->merge(scope);
         scope = m_scope;
     }
 
-    int j = 0;
-    j += m_lhs->checkSymbols(scope);
     j += m_rhs->checkSymbols(scope);
     return j;
 }
