@@ -15,12 +15,25 @@ class SymbolTable;
 
 extern SymbolTable syms;
 
+enum SymType {
+    Var,
+    Label
+};
+
+class Symbol {
+public:
+    Symbol(sym_t s, enum SymType t) : sym(s), type(t) {}
+    sym_t sym;
+    enum SymType type;
+};
+
 class Scope {
     vector<sym_t> m_symbols;
 public:
     void merge(const Scope *that);
     void insert(sym_t s);
     void insertAll(vector<sym_t> v);
+    void insertAll(vector<Symbol> v);
     int contains(sym_t s) const;
     string toString() const;
 };
@@ -36,7 +49,7 @@ public:
 
     /* Sets up scope tables in subtree and returns symbols which
      * are visible in parent. Processes tree bottom-up. */
-    virtual vector<sym_t> collectDefinedSymbols() = 0;
+    virtual vector<Symbol> collectDefinedSymbols() = 0;
 
     /* Checks for undefined references and merges scopes.
      * Tree is processed top-down. Returns nonzero value
@@ -52,7 +65,7 @@ class NumberExprAST : public ExprAST {
 public:
     NumberExprAST(long val) : ExprAST(), m_val(val) {}
     virtual string toString(int level) const;
-    virtual vector<sym_t> collectDefinedSymbols() { return vector<sym_t>(); }
+    virtual vector<Symbol> collectDefinedSymbols() { return vector<Symbol>(); }
     virtual int checkSymbols(Scope *) { return 0; }
 };
 
@@ -61,7 +74,7 @@ class SymbolExprAST : public ExprAST {
 public:
     SymbolExprAST(sym_t sym) : ExprAST(), m_sym(sym) {}
     virtual string toString(int level) const;
-    virtual vector<sym_t> collectDefinedSymbols();
+    virtual vector<Symbol> collectDefinedSymbols();
     virtual int checkSymbols(Scope *scope);
 };
 
@@ -73,7 +86,7 @@ public:
     virtual ~ListExprAST();
     static ListExprAST *push_back(ListExprAST *l, ExprAST *e);
     virtual string toString(int level) const;
-    virtual vector<sym_t> collectDefinedSymbols();
+    virtual vector<Symbol> collectDefinedSymbols();
     virtual int checkSymbols(Scope *scope);
 };
 
@@ -84,7 +97,7 @@ public:
     SymListExprAST(vector<sym_t> syms) : ExprAST(), m_syms(syms) {}
     static SymListExprAST *push_back(SymListExprAST *l, sym_t e);
     virtual string toString(int level) const;
-    virtual vector<sym_t> collectDefinedSymbols();
+    virtual vector<Symbol> collectDefinedSymbols();
     virtual int checkSymbols(Scope *) { return 0; }
 };
 
@@ -94,7 +107,7 @@ public:
         : ExprAST(), m_name(name), m_pars(pars), m_stats(stats) {}
     virtual ~FunctionExprAST();
     virtual string toString(int level) const;
-    virtual vector<sym_t> collectDefinedSymbols();
+    virtual vector<Symbol> collectDefinedSymbols();
     virtual int checkSymbols(Scope *scope);
 protected:
     sym_t m_name;
@@ -111,7 +124,7 @@ public:
         : ExprAST(), m_labels(labels), m_stat(stat) {}
     virtual ~StatementExprAST();
     virtual string toString(int level) const;
-    virtual vector<sym_t> collectDefinedSymbols();
+    virtual vector<Symbol> collectDefinedSymbols();
     virtual int checkSymbols(Scope *scope) { return m_stat->checkSymbols(scope); }
 };
 
@@ -123,7 +136,7 @@ public:
         : ExprAST(), m_callee(callee), m_args(args) {}
     virtual ~CallExprAST();
     virtual string toString(int level) const;
-    virtual vector<sym_t> collectDefinedSymbols() { return vector<sym_t>(); }
+    virtual vector<Symbol> collectDefinedSymbols() { return vector<Symbol>(); }
     virtual int checkSymbols(Scope *scope) { return m_args->checkSymbols(scope); }
 };
 
@@ -135,7 +148,7 @@ public:
         : ExprAST(), m_op(op), m_lhs(lhs), m_rhs(rhs) {}
     virtual ~BinaryExprAST();
     virtual string toString(int level) const;
-    virtual vector<sym_t> collectDefinedSymbols();
+    virtual vector<Symbol> collectDefinedSymbols();
     virtual int checkSymbols(Scope *scope);
 };
 
@@ -147,7 +160,7 @@ public:
         : ExprAST(), m_op(op), m_arg(arg) {}
     virtual ~UnaryExprAST();
     virtual string toString(int level) const;
-    virtual vector<sym_t> collectDefinedSymbols() { return vector<sym_t>(); }
+    virtual vector<Symbol> collectDefinedSymbols() { return vector<Symbol>(); }
     virtual int checkSymbols(Scope *scope) { return m_arg->checkSymbols(scope); }
 };
 

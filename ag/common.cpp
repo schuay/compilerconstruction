@@ -27,9 +27,9 @@ string SymbolExprAST::toString(int level) const {
     return s.str();
 }
 
-vector<sym_t> SymbolExprAST::collectDefinedSymbols() {
-    vector<sym_t> v;
-    v.push_back(m_sym);
+vector<Symbol> SymbolExprAST::collectDefinedSymbols() {
+    vector<Symbol> v;
+    v.push_back(Symbol(m_sym, Var));
     return v;
 }
 
@@ -63,10 +63,10 @@ ListExprAST *ListExprAST::push_back(ListExprAST *l, ExprAST *e) {
     return l;
 }
 
-vector<sym_t> ListExprAST::collectDefinedSymbols() {
-    vector<sym_t> v;
+vector<Symbol> ListExprAST::collectDefinedSymbols() {
+    vector<Symbol> v;
     for (unsigned int i = 0; i < m_exprs.size(); i++) {
-        vector<sym_t> w = m_exprs[i]->collectDefinedSymbols();
+        vector<Symbol> w = m_exprs[i]->collectDefinedSymbols();
         v.insert(v.end(), w.begin(), w.end());
     }
     return v;
@@ -97,10 +97,15 @@ SymListExprAST *SymListExprAST::push_back(SymListExprAST *l, sym_t e) {
     return l;
 }
 
-vector<sym_t> SymListExprAST::collectDefinedSymbols() {
+vector<Symbol> SymListExprAST::collectDefinedSymbols() {
     /* Either parameter lists in a function definition or
-     * statement labels. */
-    return m_syms;
+     * statement labels. We don't know which one it is, so
+     * make it a Var here and adjust later if necessary. */
+    vector<Symbol> v;
+    for (unsigned int i = 0; i < m_syms.size(); i++) {
+        v.push_back(Symbol(m_syms[i], Var));
+    }
+    return v;
 }
 
 string FunctionExprAST::toString(int level) const {
@@ -128,7 +133,7 @@ FunctionExprAST::~FunctionExprAST() {
     delete m_scope;
 }
 
-vector<sym_t> FunctionExprAST::collectDefinedSymbols() {
+vector<Symbol> FunctionExprAST::collectDefinedSymbols() {
     m_scope = new Scope;
     if (m_pars != NULL) {
         m_scope->insertAll(m_pars->collectDefinedSymbols());
@@ -136,7 +141,7 @@ vector<sym_t> FunctionExprAST::collectDefinedSymbols() {
     if (m_stats != NULL) {
         m_scope->insertAll(m_stats->collectDefinedSymbols());
     }
-    return vector<sym_t>();
+    return vector<Symbol>();
 }
 
 int FunctionExprAST::checkSymbols(Scope *scope) {
@@ -164,11 +169,15 @@ StatementExprAST::~StatementExprAST() {
     delete m_stat;
 }
 
-vector<sym_t> StatementExprAST::collectDefinedSymbols() {
-    vector<sym_t> v = m_stat->collectDefinedSymbols();
+vector<Symbol> StatementExprAST::collectDefinedSymbols() {
+    vector<Symbol> v = m_stat->collectDefinedSymbols();
     if (m_labels != NULL) {
-        vector<sym_t> w = m_labels->collectDefinedSymbols();
-        v.insert(v.end(), w.begin(), w.end());
+        vector<Symbol> w = m_labels->collectDefinedSymbols();
+        for (unsigned int i = 0; i < w.size(); i++) {
+            Symbol s = w[i];
+            s.type = Label;
+            v.push_back(s);
+        }
     }
     return v;
 }
@@ -222,17 +231,27 @@ BinaryExprAST::~BinaryExprAST() {
     delete m_rhs;
 }
 
-vector<sym_t> BinaryExprAST::collectDefinedSymbols() {
+vector<Symbol> BinaryExprAST::collectDefinedSymbols() {
     switch (m_op) {
     case IF:
-        m_scope = new Scope;
-        m_scope->insertAll(m_rhs->collectDefinedSymbols());
         break;
     case VAR: return m_lhs->collectDefinedSymbols();
-    default: break;
+    default: return vector<Symbol>();
     }
 
-    return vector<sym_t>();
+    m_scope = new Scope;
+    vector<Symbol> syms = m_rhs->collectDefinedSymbols();
+    for (vector<Symbol>::iterator it = syms.begin(); it != syms.end(); ) {
+        Symbol s = *it;
+        if (s.type == Label) {
+            it++;
+            continue;
+        }
+        m_scope->insert(s.sym);
+        it = syms.erase(it);
+    }
+
+    return syms;
 }
 
 int BinaryExprAST::checkSymbols(Scope *scope) {
@@ -301,6 +320,12 @@ void Scope::insert(sym_t s) {
 void Scope::insertAll(vector<sym_t> v) {
     for (unsigned int i = 0; i < v.size(); i++) {
         insert(v[i]);
+    }
+}
+
+void Scope::insertAll(vector<Symbol> v) {
+    for (unsigned int i = 0; i < v.size(); i++) {
+        insert(v[i].sym);
     }
 }
 
