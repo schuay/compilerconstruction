@@ -6,23 +6,38 @@ RSYNC = rsync
 ECHO = echo
 RM = rm
 
-TARGET = ag
-SOURCE = Makefile scan.l gram.y common.hpp common.cpp
+TARGET = codea
+SOURCE = Makefile scan.l gram.y common.hpp common.cpp lib include
 
 HOST = ub-handin
 REMOTEDIR = abgabe/$(TARGET)
 REMOTETEST = /usr/ftp/pub/ublu/test/$(TARGET)/test
 
 SFLAGS = -F "../.ssh-cfg"
-RFLAGS = --chmod=o-rwxs,Dug+x,u+rw,g+r -e "$(SSH) $(SFLAGS)"
+RFLAGS = --recursive --progress \
+		 --copy-links -e "$(SSH) $(SFLAGS)"
 YFLAGS = -d
-CXXFLAGS = -Wall -Wextra -pedantic -lstdc++ -g -O0
-LDFLAGS = -lfl
+CXXFLAGS = -Wall -Wextra -pedantic -Wno-long-long -lstdc++ -g -O0 -std=gnu++98 \
+		   -Iinclude -DNDEBUG -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS \
+		   -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -O3 -fomit-frame-pointer \
+		   -fno-exceptions -fPIC -Woverloaded-virtual -Wcast-qual
+# LLVM needs to be compiled using --enable-targets=host
+LDFLAGS = -lfl \
+		  -Llib/llvm  -lpthread -lffi -ldl -lm \
+		  -lLLVMTableGen -lLLVMMCJIT -lLLVMRuntimeDyld -lLLVMObject \
+		  -lLLVMMCDisassembler -lLLVMLinker -lLLVMipo -lLLVMInterpreter \
+		  -lLLVMInstrumentation -lLLVMJIT -lLLVMExecutionEngine -lLLVMDebugInfo \
+		  -lLLVMBitWriter -lLLVMX86Disassembler -lLLVMX86AsmParser -lLLVMX86CodeGen \
+		  -lLLVMX86Desc -lLLVMSelectionDAG -lLLVMX86AsmPrinter -lLLVMX86Utils \
+		  -lLLVMX86Info -lLLVMAsmPrinter -lLLVMMCParser -lLLVMCodeGen -lLLVMScalarOpts \
+		  -lLLVMInstCombine -lLLVMTransformUtils -lLLVMipa -lLLVMAsmParser \
+		  -lLLVMArchive -lLLVMBitReader -lLLVMAnalysis -lLLVMTarget -lLLVMMC \
+		  -lLLVMCore -lLLVMSupport
 
 all: $(TARGET)
 
 $(TARGET): lex.yy.cpp gram.tab.cpp common.o
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) 
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 lex.yy.cpp: scan.l gram.tab.hpp
 	$(FLEX) -olex.yy.cpp $<
