@@ -20,6 +20,9 @@ enum SymType {
     Label
 };
 
+/* Only used for passing around symbol lists during symbol
+   collection. Necessary because label symbols are treated differently
+   than variable symbols. */
 class Symbol {
 public:
     Symbol(sym_t s, enum SymType t) : sym(s), type(t) {}
@@ -27,6 +30,8 @@ public:
     enum SymType type;
 };
 
+/* Used only for checking validity of scopes. Code generation
+   is simplified by using a global symbol table. */
 class Scope {
     vector<sym_t> m_symbols;
 public:
