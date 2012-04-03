@@ -9,6 +9,7 @@
 #include <llvm/LLVMContext.h>
 #include <llvm/Support/IRBuilder.h>
 #include <llvm/Analysis/Passes.h>
+#include <llvm/Analysis/Verifier.h>
 //#include <llvm/Assembly/PrintModulePass.h>
 //#include <llvm/Support/raw_ostream.h>
 //#include <llvm/Support/TargetRegistry.h>
@@ -212,6 +213,7 @@ Value *FunctionExprAST::codegen() {
         }
     }
 
+    verifyFunction(*f);
     fpm->run(*f);
 
     return f;
@@ -372,8 +374,12 @@ Value *BinaryExprAST::codegen() {
     case '*': return builder.CreateMul(l, r, "multmp");
     case '+': return builder.CreateAdd(l, r, "addtmp");
     case AND: return builder.CreateAnd(l, r, "andtmp");
-    case OPLESSEQ: return builder.CreateICmpSLE(l, r, "cmptmp");
-    case '#':return builder.CreateICmpNE(l, r);
+    case OPLESSEQ:
+        l = builder.CreateICmpSLE(l, r, "cmptmp");
+        return builder.CreateZExt(l, Type::getInt64Ty(getGlobalContext()), "csttmp");
+    case '#':
+        l = builder.CreateICmpNE(l, r);
+        return builder.CreateZExt(l, Type::getInt64Ty(getGlobalContext()), "csttmp");
     default: return errorV("Unknown binary operator.");
     }
 }
