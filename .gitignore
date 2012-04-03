@@ -2,3 +2,4 @@
 *.swp
 lex.yy.c
 .ssh-cfg
+*.pro*
