@@ -3,7 +3,11 @@
 #include <string.h>
 #include <assert.h>
 #include <vector>
+#include <map>
 #include <sstream>
+#include <llvm/Constants.h>
+#include <llvm/LLVMContext.h>
+#include <llvm/Support/IRBuilder.h>
 
 #include "common.hpp"
 #include "gram.tab.hpp"
@@ -14,11 +18,23 @@ SymbolTable syms;
 
 using std::stringstream;
 using std::endl;
+using std::map;
+
+static Module *theModule;
+static IRBuilder<> builder(getGlobalContext());
+static map<int, Value*> namedValues;
+
+Value *errorV(const char *str) { fprintf(stderr, "Error: %s\n", str); return 0; }
 
 string NumberExprAST::toString(int level) const {
     stringstream s;
     s << string(level * INDENT, ' ') << "NUM: " << m_val << endl;
     return s.str();
+}
+
+Value *NumberExprAST::codegen() {
+    /* 64 bits, signed */
+    return ConstantInt::get(getGlobalContext(), APInt(64, m_val, true));
 }
 
 string SymbolExprAST::toString(int level) const {
@@ -39,6 +55,12 @@ int SymbolExprAST::checkSymbols(Scope *scope) {
         return 1;
     }
     return 0;
+}
+
+Value *SymbolExprAST::codegen() {
+    /* TODO: this also needs to work for labels. */
+    Value *v = namedValues[m_sym];
+    return v ? v : errorV("Unknown variable name");
 }
 
 string ListExprAST::toString(int level) const {
@@ -213,34 +235,22 @@ static const char *opstr(int op) {
     }
 }
 
-string BinaryExprAST::toString(int level) const {
+string IfExprAST::toString(int level) const {
     stringstream s;
-    s << string(level * INDENT, ' ') << opstr(m_op);
-    if (m_scope != NULL) {
-        s << "; " << m_scope->toString();
-    } else {
-        s << endl;
-    }
-    s << m_lhs->toString(level + 1);
-    s << m_rhs->toString(level + 1);
+    s << string(level * INDENT, ' ') << "IF; " << m_scope->toString();
+    s << m_cond->toString(level + 1);
+    s << m_then->toString(level + 1);
     return s.str();
 }
 
-BinaryExprAST::~BinaryExprAST() {
-    delete m_lhs;
-    delete m_rhs;
+IfExprAST::~IfExprAST() {
+    delete m_cond;
+    delete m_then;
 }
 
-vector<Symbol> BinaryExprAST::collectDefinedSymbols() {
-    switch (m_op) {
-    case IF:
-        break;
-    case VAR: return m_lhs->collectDefinedSymbols();
-    default: return vector<Symbol>();
-    }
-
+vector<Symbol> IfExprAST::collectDefinedSymbols() {
     m_scope = new Scope;
-    vector<Symbol> syms = m_rhs->collectDefinedSymbols();
+    vector<Symbol> syms = m_then->collectDefinedSymbols();
     for (vector<Symbol>::iterator it = syms.begin(); it != syms.end(); ) {
         Symbol s = *it;
         if (s.type == Label) {
@@ -254,24 +264,56 @@ vector<Symbol> BinaryExprAST::collectDefinedSymbols() {
     return syms;
 }
 
-int BinaryExprAST::checkSymbols(Scope *scope) {
+int IfExprAST::checkSymbols(Scope *scope) {
     assert(scope != NULL);
 
     /* lhs is always in the parent scope.  */
 
     int j = 0;
-    j += m_lhs->checkSymbols(scope);
-    
-    /* rhs can start a new (merged) scope in IF statements. */
+    j += m_cond->checkSymbols(scope);
 
-    if (m_op == IF) {
-        assert(m_scope != NULL);
-        m_scope->merge(scope);
-        scope = m_scope;
+    /* rhs starts a new (merged) scope in IF statements. */
+
+    assert(m_scope != NULL);
+    m_scope->merge(scope);
+    scope = m_scope;
+
+    j += m_then->checkSymbols(scope);
+    return j;
+}
+
+string BinaryExprAST::toString(int level) const {
+    stringstream s;
+    s << string(level * INDENT, ' ') << opstr(m_op) << endl;
+    s << m_lhs->toString(level + 1);
+    s << m_rhs->toString(level + 1);
+    return s.str();
+}
+
+BinaryExprAST::~BinaryExprAST() {
+    delete m_lhs;
+    delete m_rhs;
+}
+
+vector<Symbol> BinaryExprAST::collectDefinedSymbols() {
+    switch (m_op) {
+    case VAR: return m_lhs->collectDefinedSymbols();
+    default: break;
     }
+    return vector<Symbol>();
+}
 
+int BinaryExprAST::checkSymbols(Scope *scope) {
+    assert(scope != NULL);
+
+    int j = 0;
+    j += m_lhs->checkSymbols(scope);
     j += m_rhs->checkSymbols(scope);
     return j;
+}
+
+Value *BinaryExprAST::codegen() {
+    return 0; /* TODO */
 }
 
 string UnaryExprAST::toString(int level) const {

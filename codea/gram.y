@@ -72,7 +72,7 @@ stat        :   RETURN expr
             |   GOTO ID
                     { $<n>$ = new UnaryExprAST(GOTO, new SymbolExprAST($<sym>2)); }
             |   IF expr THEN stats END
-                    { $<n>$ = new BinaryExprAST(IF, $<n>2, $<exprs>4); }
+                    { $<n>$ = new IfExprAST($<n>2, $<exprs>4); }
             |   VAR ID '=' expr
                     { $<n>$ = new BinaryExprAST(VAR, new SymbolExprAST($<sym>2), $<n>4); }
             |   lexpr '=' expr

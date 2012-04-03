@@ -1,5 +1,6 @@
 #include <string>
 #include <vector>
+#include <llvm/Value.h>
 
 #define ERR_LEX (1)
 #define ERR_SYNTAX (2)
@@ -7,6 +8,7 @@
 
 using std::string;
 using std::vector;
+using namespace llvm;
 
 typedef int sym_t;
 typedef int op_t;
@@ -61,6 +63,9 @@ public:
      * if errors occurred. */
     virtual int checkSymbols(Scope *scope) = 0;
 
+    /* Generates LLVM IR code. TODO: make this pure virtual. */
+    virtual Value *codegen() { return 0; }
+
 protected:
     Scope *m_scope;
 };
@@ -72,6 +77,7 @@ public:
     virtual string toString(int level) const;
     virtual vector<Symbol> collectDefinedSymbols() { return vector<Symbol>(); }
     virtual int checkSymbols(Scope *) { return 0; }
+    virtual Value *codegen();
 };
 
 class SymbolExprAST : public ExprAST {
@@ -81,6 +87,7 @@ public:
     virtual string toString(int level) const;
     virtual vector<Symbol> collectDefinedSymbols();
     virtual int checkSymbols(Scope *scope);
+    virtual Value *codegen();
 };
 
 class ListExprAST : public ExprAST {
@@ -145,8 +152,19 @@ public:
     virtual int checkSymbols(Scope *scope) { return m_args->checkSymbols(scope); }
 };
 
+class IfExprAST : public ExprAST {
+    ExprAST *m_cond, *m_then;
+public:
+    IfExprAST(ExprAST *cond, ExprAST *then)
+        : ExprAST(), m_cond(cond), m_then(then) {}
+    virtual ~IfExprAST();
+    virtual string toString(int level) const;
+    virtual vector<Symbol> collectDefinedSymbols();
+    virtual int checkSymbols(Scope *scope);
+};
+
 class BinaryExprAST : public ExprAST {
-    op_t m_op;  /* one of: IF, VAR, '=', '*', '+', AND, OPLESSEQ, '#' */ 
+    op_t m_op;  /* one of: VAR, '=', '*', '+', AND, OPLESSEQ, '#' */
     ExprAST *m_lhs, *m_rhs;
 public:
     BinaryExprAST(op_t op, ExprAST *lhs, ExprAST *rhs)
@@ -155,6 +173,7 @@ public:
     virtual string toString(int level) const;
     virtual vector<Symbol> collectDefinedSymbols();
     virtual int checkSymbols(Scope *scope);
+    virtual Value *codegen();
 };
 
 class UnaryExprAST : public ExprAST {
