@@ -103,22 +103,32 @@ public:
     virtual Value *codegen();
 };
 
-class SymListExprAST : public ExprAST {
-    vector<sym_t> m_syms;
-    SymListExprAST() {}
+template <class T>
+class UnionList {
 public:
-    SymListExprAST(vector<sym_t> syms) : ExprAST(), m_syms(syms) {}
-    static SymListExprAST *push_back(SymListExprAST *l, sym_t e);
-    virtual string toString(int level) const;
-    virtual vector<Symbol> collectDefinedSymbols();
-    virtual int checkSymbols(Scope *) { return 0; }
-    virtual Value *codegen();
+    static UnionList<T> *push_back(UnionList<T> *l, T e) {
+        if (l == NULL) {
+            l = new UnionList<T>;
+            l->m_v = vector<T>();
+        }
+        l->m_v.push_back(e);
+        return l;
+    }
+
+    const vector<T> &get() const {
+        return m_v;
+    }
+private:
+    UnionList() {}
+    vector<T> m_v;
 };
+
+typedef UnionList<sym_t> SymList;
 
 class FunctionExprAST : public ExprAST {
 public:
-    FunctionExprAST(sym_t name, SymListExprAST *pars, ListExprAST *stats)
-        : ExprAST(), m_name(name), m_pars(pars), m_stats(stats) {}
+    FunctionExprAST(sym_t name, SymList *pars, ListExprAST *stats)
+        : ExprAST(), m_name(name), m_pars(pars->get()), m_stats(stats) { delete pars; }
     virtual ~FunctionExprAST();
     virtual string toString(int level) const;
     virtual vector<Symbol> collectDefinedSymbols();
@@ -126,17 +136,17 @@ public:
     virtual Value *codegen();
 protected:
     sym_t m_name;
-    SymListExprAST *m_pars;
+    vector<sym_t> m_pars;
     ListExprAST *m_stats;
 };
 
 class StatementExprAST : public ExprAST {
-    SymListExprAST *m_labels;
+    vector<sym_t> m_labels;
     ExprAST *m_stat;
 public:
-    StatementExprAST(ExprAST *stat) : ExprAST(), m_labels(NULL), m_stat(stat) {}
-    StatementExprAST(SymListExprAST *labels, ExprAST *stat)
-        : ExprAST(), m_labels(labels), m_stat(stat) {}
+    StatementExprAST(ExprAST *stat) : ExprAST(),  m_stat(stat) {}
+    StatementExprAST(SymList *labels, ExprAST *stat)
+        : ExprAST(), m_labels(labels->get()), m_stat(stat) { delete labels; }
     virtual ~StatementExprAST();
     virtual string toString(int level) const;
     virtual vector<Symbol> collectDefinedSymbols();

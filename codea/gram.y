@@ -21,7 +21,7 @@ int errcount = 0;
     int sym;
     long val;
     ExprAST *n;
-    SymListExprAST *syms;
+    SymList *syms;
     ListExprAST *exprs;
 }
 
@@ -46,9 +46,9 @@ funcdef     :   ID '(' pars ')' stats END
 pars        :   /* empty */
                     { $<syms>$ = NULL; }
             |   ID
-                    { $<syms>$ = SymListExprAST::push_back(NULL, $<sym>1); }
+                    { $<syms>$ = SymList::push_back(NULL, $<sym>1); }
             |   ID ','  pars
-                    { $<syms>$ = SymListExprAST::push_back($<syms>3, $<sym>1); }
+                    { $<syms>$ = SymList::push_back($<syms>3, $<sym>1); }
             ;
 stats       :   /* empty */
                     { $<exprs>$ = NULL; }
@@ -63,9 +63,9 @@ singlestat  :   stat
                     { $<n>$ = new StatementExprAST($<syms>1, $<n>2); }
             ;
 labels      :   ID ':'
-                    { $<syms>$ = SymListExprAST::push_back(NULL, $<sym>1); }
+                    { $<syms>$ = SymList::push_back(NULL, $<sym>1); }
             |   labels ID ':'
-                    { $<syms>$ = SymListExprAST::push_back($<syms>1, $<sym>2); }
+                    { $<syms>$ = SymList::push_back($<syms>1, $<sym>2); }
             ;
 stat        :   RETURN expr
                     { $<n>$ = new UnaryExprAST(RETURN, $<n>2); }

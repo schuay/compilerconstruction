@@ -114,38 +114,6 @@ Value *ListExprAST::codegen() {
     return v;
 }
 
-string SymListExprAST::toString(int level) const {
-    stringstream s;
-    for (unsigned int i = 0; i < m_syms.size(); i++) {
-        s << string(level * INDENT, ' ') << "SYM: " << syms.get(m_syms[i]) << endl;
-    }
-    return s.str();
-}
-
-SymListExprAST *SymListExprAST::push_back(SymListExprAST *l, sym_t e) {
-    if (l == NULL) {
-        l = new SymListExprAST;
-        l->m_syms = vector<sym_t>();
-    }
-    l->m_syms.push_back(e);
-    return l;
-}
-
-vector<Symbol> SymListExprAST::collectDefinedSymbols() {
-    /* Either parameter lists in a function definition or
-     * statement labels. We don't know which one it is, so
-     * make it a Var here and adjust later if necessary. */
-    vector<Symbol> v;
-    for (unsigned int i = 0; i < m_syms.size(); i++) {
-        v.push_back(Symbol(m_syms[i], Var));
-    }
-    return v;
-}
-
-Value *SymListExprAST::codegen() {
-    return 0; /* TODO */
-}
-
 string FunctionExprAST::toString(int level) const {
     stringstream s;
     s << string(level * INDENT, ' ') << "FUN: " << syms.get(m_name);
@@ -155,8 +123,8 @@ string FunctionExprAST::toString(int level) const {
         s << endl;
     }
     s << "PARS:" << endl;
-    if (m_pars != NULL) {
-        s << m_pars->toString(level + 1);
+    for (unsigned int i = 0; i < m_pars.size(); i++) {
+        s << syms.get(m_pars[i]);
     }
     s << "STATS:" << endl;
     if (m_stats != NULL) {
@@ -166,16 +134,13 @@ string FunctionExprAST::toString(int level) const {
 }
 
 FunctionExprAST::~FunctionExprAST() {
-    delete m_pars;
     delete m_stats;
     delete m_scope;
 }
 
 vector<Symbol> FunctionExprAST::collectDefinedSymbols() {
     m_scope = new Scope;
-    if (m_pars != NULL) {
-        m_scope->insertAll(m_pars->collectDefinedSymbols());
-    }
+    m_scope->insertAll(m_pars);
     if (m_stats != NULL) {
         m_scope->insertAll(m_stats->collectDefinedSymbols());
     }
@@ -199,27 +164,21 @@ Value *FunctionExprAST::codegen() {
 
 string StatementExprAST::toString(int level) const {
     stringstream s;
-    if (m_labels != NULL) {
-        s << m_labels->toString(level);
+    for (unsigned int i = 0; i < m_labels.size(); i++) {
+        s << syms.get(m_labels[i]);
     }
     s << m_stat->toString(level);
     return s.str();
 }
 
 StatementExprAST::~StatementExprAST() {
-    delete m_labels;
     delete m_stat;
 }
 
 vector<Symbol> StatementExprAST::collectDefinedSymbols() {
     vector<Symbol> v = m_stat->collectDefinedSymbols();
-    if (m_labels != NULL) {
-        vector<Symbol> w = m_labels->collectDefinedSymbols();
-        for (unsigned int i = 0; i < w.size(); i++) {
-            Symbol s = w[i];
-            s.type = Label;
-            v.push_back(s);
-        }
+    for (unsigned int i = 0; i < m_labels.size(); i++) {
+        v.push_back(Symbol(m_labels[i], Label));
     }
     return v;
 }
