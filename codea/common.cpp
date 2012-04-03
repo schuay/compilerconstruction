@@ -313,7 +313,22 @@ int BinaryExprAST::checkSymbols(Scope *scope) {
 }
 
 Value *BinaryExprAST::codegen() {
-    return 0; /* TODO */
+    Value *l = m_lhs->codegen();
+    Value *r = m_rhs->codegen();
+    if (l == 0 || r == 0) {
+        return 0;
+    }
+
+    switch (m_op) {
+    case VAR:
+    case '=': return errorV("{VAR, =} not yet implemented"); /* TODO */
+    case '*': return builder.CreateMul(l, r, "multmp");
+    case '+': return builder.CreateAdd(l, r, "addtmp");
+    case AND: return builder.CreateAnd(l, r, "andtmp");
+    case OPLESSEQ: return builder.CreateICmpSLE(l, r, "cmptmp");
+    case '#':return builder.CreateICmpNE(l, r);
+    default: return errorV("Unknown binary operator.");
+    }
 }
 
 string UnaryExprAST::toString(int level) const {
@@ -325,6 +340,22 @@ string UnaryExprAST::toString(int level) const {
 
 UnaryExprAST::~UnaryExprAST() {
     delete m_arg;
+}
+
+Value *UnaryExprAST::codegen() {
+    Value *v = m_arg->codegen();
+    if (v == 0) {
+        return 0;
+    }
+
+    switch (m_op) {
+    case NOT: return builder.CreateNot(v, "nottmp");
+    case UNARYMINUS: return builder.CreateNeg(v, "negtmp");
+    case RETURN: builder.CreateRet(v);
+    case DEREF:
+    case GOTO: return errorV("{DEREF,GOTO} not yet implemented"); /* TODO */
+    default: return errorV("Unknown unary operator.");
+    }
 }
 
 sym_t SymbolTable::insert(string s) {

@@ -186,6 +186,7 @@ public:
     virtual string toString(int level) const;
     virtual vector<Symbol> collectDefinedSymbols() { return vector<Symbol>(); }
     virtual int checkSymbols(Scope *scope) { return m_arg->checkSymbols(scope); }
+    virtual Value *codegen();
 };
 
 class SymbolTable {
