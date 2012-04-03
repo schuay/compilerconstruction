@@ -144,6 +144,14 @@ void process_funcdef(ExprAST *n) {
     int err = n->checkSymbols(NULL);
     string s = n->toString(0);
     printf("%s", s.c_str());
+
+    Value *ret = n->codegen();
+    if (ret == 0) {
+        fprintf(stderr, "codegen() returned 0.\n");
+    } else {
+        theModule->dump();
+    }
+
     delete n;
     
     if (err) {
@@ -159,9 +167,12 @@ void yyerror(const char *p) {
 int main(void) {
     yydebug = 0;
 
+    initLLVM();
+
     yyparse();
 
     printf("%s", syms.toString().c_str());
+    delete theModule;
 
     if (errcount > 0) {
         return ERR_SYNTAX;

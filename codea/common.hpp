@@ -1,6 +1,8 @@
 #include <string>
 #include <vector>
 #include <llvm/Value.h>
+#include <llvm/Module.h>
+#include <llvm/PassManager.h>
 
 #define ERR_LEX (1)
 #define ERR_SYNTAX (2)
@@ -16,6 +18,10 @@ typedef int op_t;
 class SymbolTable;
 
 extern SymbolTable syms;
+extern Module *theModule;
+extern FunctionPassManager *fpm;
+
+void initLLVM();
 
 enum SymType {
     Var,
@@ -127,8 +133,7 @@ typedef UnionList<sym_t> SymList;
 
 class FunctionExprAST : public ExprAST {
 public:
-    FunctionExprAST(sym_t name, SymList *pars, ListExprAST *stats)
-        : ExprAST(), m_name(name), m_pars(pars->get()), m_stats(stats) { delete pars; }
+    FunctionExprAST(sym_t name, SymList *pars, ListExprAST *stats);
     virtual ~FunctionExprAST();
     virtual string toString(int level) const;
     virtual vector<Symbol> collectDefinedSymbols();
