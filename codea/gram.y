@@ -143,7 +143,7 @@ void process_funcdef(ExprAST *n) {
     n->collectDefinedSymbols();
     int err = n->checkSymbols(NULL);
     string s = n->toString(0);
-    printf("%s", s.c_str());
+    //printf("%s", s.c_str());
 
     Value *ret = n->codegen();
     if (ret == 0) {
@@ -171,7 +171,7 @@ int main(void) {
 
     yyparse();
 
-    printf("%s", syms.toString().c_str());
+    //printf("%s", syms.toString().c_str());
     delete theModule;
 
     if (errcount > 0) {
