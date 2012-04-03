@@ -63,8 +63,8 @@ public:
      * if errors occurred. */
     virtual int checkSymbols(Scope *scope) = 0;
 
-    /* Generates LLVM IR code. TODO: make this pure virtual. */
-    virtual Value *codegen() { return 0; }
+    /* Generates LLVM IR code. */
+    virtual Value *codegen() = 0;
 
 protected:
     Scope *m_scope;
@@ -100,6 +100,7 @@ public:
     virtual string toString(int level) const;
     virtual vector<Symbol> collectDefinedSymbols();
     virtual int checkSymbols(Scope *scope);
+    virtual Value *codegen();
 };
 
 class SymListExprAST : public ExprAST {
@@ -111,6 +112,7 @@ public:
     virtual string toString(int level) const;
     virtual vector<Symbol> collectDefinedSymbols();
     virtual int checkSymbols(Scope *) { return 0; }
+    virtual Value *codegen();
 };
 
 class FunctionExprAST : public ExprAST {
@@ -121,6 +123,7 @@ public:
     virtual string toString(int level) const;
     virtual vector<Symbol> collectDefinedSymbols();
     virtual int checkSymbols(Scope *scope);
+    virtual Value *codegen();
 protected:
     sym_t m_name;
     SymListExprAST *m_pars;
@@ -138,6 +141,7 @@ public:
     virtual string toString(int level) const;
     virtual vector<Symbol> collectDefinedSymbols();
     virtual int checkSymbols(Scope *scope) { return m_stat->checkSymbols(scope); }
+    virtual Value *codegen();
 };
 
 class CallExprAST : public ExprAST {
@@ -150,6 +154,7 @@ public:
     virtual string toString(int level) const;
     virtual vector<Symbol> collectDefinedSymbols() { return vector<Symbol>(); }
     virtual int checkSymbols(Scope *scope) { return m_args->checkSymbols(scope); }
+    virtual Value *codegen();
 };
 
 class IfExprAST : public ExprAST {
@@ -161,6 +166,7 @@ public:
     virtual string toString(int level) const;
     virtual vector<Symbol> collectDefinedSymbols();
     virtual int checkSymbols(Scope *scope);
+    virtual Value *codegen();
 };
 
 class BinaryExprAST : public ExprAST {

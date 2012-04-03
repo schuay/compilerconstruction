@@ -102,6 +102,18 @@ int ListExprAST::checkSymbols(Scope *scope) {
     return j;
 }
 
+Value *ListExprAST::codegen() {
+    Value *v;
+    for (unsigned int i = 0; i < m_exprs.size(); i++) {
+        v = m_exprs[i]->codegen();
+        if (v == 0) {
+            break;
+        }
+    }
+
+    return v;
+}
+
 string SymListExprAST::toString(int level) const {
     stringstream s;
     for (unsigned int i = 0; i < m_syms.size(); i++) {
@@ -128,6 +140,10 @@ vector<Symbol> SymListExprAST::collectDefinedSymbols() {
         v.push_back(Symbol(m_syms[i], Var));
     }
     return v;
+}
+
+Value *SymListExprAST::codegen() {
+    return 0; /* TODO */
 }
 
 string FunctionExprAST::toString(int level) const {
@@ -177,6 +193,10 @@ int FunctionExprAST::checkSymbols(Scope *scope) {
     }
 }
 
+Value *FunctionExprAST::codegen() {
+    return 0; /* TODO */
+}
+
 string StatementExprAST::toString(int level) const {
     stringstream s;
     if (m_labels != NULL) {
@@ -204,6 +224,10 @@ vector<Symbol> StatementExprAST::collectDefinedSymbols() {
     return v;
 }
 
+Value *StatementExprAST::codegen() {
+    return 0; /* TODO */
+}
+
 string CallExprAST::toString(int level) const {
     stringstream s;
     s << string(level * INDENT, ' ') << "CALL: " << syms.get(m_callee) << endl;
@@ -213,6 +237,10 @@ string CallExprAST::toString(int level) const {
 
 CallExprAST::~CallExprAST() {
     delete m_args;
+}
+
+Value *CallExprAST::codegen() {
+    return 0; /* TODO */
 }
 
 static const char *opstr(int op) {
@@ -280,6 +308,10 @@ int IfExprAST::checkSymbols(Scope *scope) {
 
     j += m_then->checkSymbols(scope);
     return j;
+}
+
+Value *IfExprAST::codegen() {
+    return 0; /* TODO */
 }
 
 string BinaryExprAST::toString(int level) const {
