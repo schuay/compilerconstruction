@@ -20,6 +20,9 @@ enum SymType {
     Label
 };
 
+/* Only used for passing around symbol lists during symbol
+   collection. Necessary because label symbols are treated differently
+   than variable symbols. */
 class Symbol {
 public:
     Symbol(sym_t s, enum SymType t) : sym(s), type(t) {}
@@ -27,6 +30,8 @@ public:
     enum SymType type;
 };
 
+/* Used only for checking validity of scopes. Code generation
+   is simplified by using a global symbol table. */
 class Scope {
     vector<sym_t> m_symbols;
 public:
@@ -78,50 +83,49 @@ public:
     virtual int checkSymbols(Scope *scope);
 };
 
-class ListExprAST : public ExprAST {
-    vector<ExprAST *> m_exprs;
-    ListExprAST() {}
+template <class T>
+class UnionList {
 public:
-    ListExprAST(vector<ExprAST *> exprs) : ExprAST(), m_exprs(exprs) {}
-    virtual ~ListExprAST();
-    static ListExprAST *push_back(ListExprAST *l, ExprAST *e);
-    virtual string toString(int level) const;
-    virtual vector<Symbol> collectDefinedSymbols();
-    virtual int checkSymbols(Scope *scope);
+    static UnionList<T> *push_back(UnionList<T> *l, T e) {
+        if (l == NULL) {
+            l = new UnionList<T>;
+            l->m_v = vector<T>();
+        }
+        l->m_v.push_back(e);
+        return l;
+    }
+
+    const vector<T> &get() const {
+        return m_v;
+    }
+private:
+    UnionList() {}
+    vector<T> m_v;
 };
 
-class SymListExprAST : public ExprAST {
-    vector<sym_t> m_syms;
-    SymListExprAST() {}
-public:
-    SymListExprAST(vector<sym_t> syms) : ExprAST(), m_syms(syms) {}
-    static SymListExprAST *push_back(SymListExprAST *l, sym_t e);
-    virtual string toString(int level) const;
-    virtual vector<Symbol> collectDefinedSymbols();
-    virtual int checkSymbols(Scope *) { return 0; }
-};
+typedef UnionList<sym_t> SymList;
+typedef UnionList<ExprAST *> ExprList;
 
 class FunctionExprAST : public ExprAST {
 public:
-    FunctionExprAST(sym_t name, SymListExprAST *pars, ListExprAST *stats)
-        : ExprAST(), m_name(name), m_pars(pars), m_stats(stats) {}
+    FunctionExprAST(sym_t name, SymList *pars, ExprList *stats);
     virtual ~FunctionExprAST();
     virtual string toString(int level) const;
     virtual vector<Symbol> collectDefinedSymbols();
     virtual int checkSymbols(Scope *scope);
 protected:
     sym_t m_name;
-    SymListExprAST *m_pars;
-    ListExprAST *m_stats;
+    vector<sym_t> m_pars;
+    vector<ExprAST *> m_stats;
 };
 
 class StatementExprAST : public ExprAST {
-    SymListExprAST *m_labels;
+    vector<sym_t> m_labels;
     ExprAST *m_stat;
 public:
-    StatementExprAST(ExprAST *stat) : ExprAST(), m_labels(NULL), m_stat(stat) {}
-    StatementExprAST(SymListExprAST *labels, ExprAST *stat)
-        : ExprAST(), m_labels(labels), m_stat(stat) {}
+    StatementExprAST(ExprAST *stat) : ExprAST(),  m_stat(stat) {}
+    StatementExprAST(SymList *labels, ExprAST *stat)
+        : ExprAST(), m_labels(labels->get()), m_stat(stat) { delete labels; }
     virtual ~StatementExprAST();
     virtual string toString(int level) const;
     virtual vector<Symbol> collectDefinedSymbols();
@@ -130,18 +134,28 @@ public:
 
 class CallExprAST : public ExprAST {
     sym_t m_callee;
-    ListExprAST *m_args;
+    vector<ExprAST *> m_args;
 public:
-    CallExprAST(sym_t callee, ListExprAST *args)
-        : ExprAST(), m_callee(callee), m_args(args) {}
+    CallExprAST(sym_t callee, ExprList *args);
     virtual ~CallExprAST();
     virtual string toString(int level) const;
     virtual vector<Symbol> collectDefinedSymbols() { return vector<Symbol>(); }
-    virtual int checkSymbols(Scope *scope) { return m_args->checkSymbols(scope); }
+    virtual int checkSymbols(Scope *scope);
+};
+
+class IfExprAST : public ExprAST {
+    ExprAST *m_cond;
+    vector<ExprAST *> m_then;
+public:
+    IfExprAST(ExprAST *cond, ExprList *then);
+    virtual ~IfExprAST();
+    virtual string toString(int level) const;
+    virtual vector<Symbol> collectDefinedSymbols();
+    virtual int checkSymbols(Scope *scope);
 };
 
 class BinaryExprAST : public ExprAST {
-    op_t m_op;  /* one of: IF, VAR, '=', '*', '+', AND, OPLESSEQ, '#' */ 
+    op_t m_op;  /* one of: VAR, '=', '*', '+', AND, OPLESSEQ, '#' */
     ExprAST *m_lhs, *m_rhs;
 public:
     BinaryExprAST(op_t op, ExprAST *lhs, ExprAST *rhs)

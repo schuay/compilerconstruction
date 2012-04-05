@@ -41,71 +41,17 @@ int SymbolExprAST::checkSymbols(Scope *scope) {
     return 0;
 }
 
-string ListExprAST::toString(int level) const {
-    stringstream s;
-    for (unsigned int i = 0; i < m_exprs.size(); i++) {
-        s << m_exprs[i]->toString(level);
+FunctionExprAST::FunctionExprAST(sym_t name, SymList *pars, ExprList *stats)
+    : ExprAST(), m_name(name) {
+    /* TODO: pars are reversed */
+    if (pars) {
+        m_pars = pars->get();
+        delete pars;
     }
-    return s.str();
-}
-
-ListExprAST::~ListExprAST() {
-    for (unsigned int i = 0; i < m_exprs.size(); i++) {
-        delete m_exprs[i];
+    if (stats) {
+        m_stats = stats->get();
+        delete stats;
     }
-}
-
-ListExprAST *ListExprAST::push_back(ListExprAST *l, ExprAST *e) {
-    if (l == NULL) {
-        l = new ListExprAST();
-    }
-    l->m_exprs.push_back(e);
-    return l;
-}
-
-vector<Symbol> ListExprAST::collectDefinedSymbols() {
-    vector<Symbol> v;
-    for (unsigned int i = 0; i < m_exprs.size(); i++) {
-        vector<Symbol> w = m_exprs[i]->collectDefinedSymbols();
-        v.insert(v.end(), w.begin(), w.end());
-    }
-    return v;
-}
-
-int ListExprAST::checkSymbols(Scope *scope) {
-    int j = 0;
-    for (unsigned int i = 0; i < m_exprs.size(); i++) {
-        j += m_exprs[i]->checkSymbols(scope);
-    }
-    return j;
-}
-
-string SymListExprAST::toString(int level) const {
-    stringstream s;
-    for (unsigned int i = 0; i < m_syms.size(); i++) {
-        s << string(level * INDENT, ' ') << "SYM: " << syms.get(m_syms[i]) << endl;
-    }
-    return s.str();
-}
-
-SymListExprAST *SymListExprAST::push_back(SymListExprAST *l, sym_t e) {
-    if (l == NULL) {
-        l = new SymListExprAST;
-        l->m_syms = vector<sym_t>();
-    }
-    l->m_syms.push_back(e);
-    return l;
-}
-
-vector<Symbol> SymListExprAST::collectDefinedSymbols() {
-    /* Either parameter lists in a function definition or
-     * statement labels. We don't know which one it is, so
-     * make it a Var here and adjust later if necessary. */
-    vector<Symbol> v;
-    for (unsigned int i = 0; i < m_syms.size(); i++) {
-        v.push_back(Symbol(m_syms[i], Var));
-    }
-    return v;
 }
 
 string FunctionExprAST::toString(int level) const {
@@ -117,29 +63,28 @@ string FunctionExprAST::toString(int level) const {
         s << endl;
     }
     s << "PARS:" << endl;
-    if (m_pars != NULL) {
-        s << m_pars->toString(level + 1);
+    for (unsigned int i = 0; i < m_pars.size(); i++) {
+        s << syms.get(m_pars[i]);
     }
     s << "STATS:" << endl;
-    if (m_stats != NULL) {
-        s << m_stats->toString(level + 1);
+    for (unsigned int i = 0; i < m_stats.size(); i++) {
+        s << m_stats[i]->toString(level + 1);
     }
     return s.str();
 }
 
 FunctionExprAST::~FunctionExprAST() {
-    delete m_pars;
-    delete m_stats;
+    for (unsigned int i = 0; i < m_stats.size(); i++) {
+        delete m_stats[i];
+    }
     delete m_scope;
 }
 
 vector<Symbol> FunctionExprAST::collectDefinedSymbols() {
     m_scope = new Scope;
-    if (m_pars != NULL) {
-        m_scope->insertAll(m_pars->collectDefinedSymbols());
-    }
-    if (m_stats != NULL) {
-        m_scope->insertAll(m_stats->collectDefinedSymbols());
+    m_scope->insertAll(m_pars);
+    for (unsigned int i = 0; i < m_stats.size(); i++) {
+        m_scope->insertAll(m_stats[i]->collectDefinedSymbols());
     }
     return vector<Symbol>();
 }
@@ -148,49 +93,65 @@ int FunctionExprAST::checkSymbols(Scope *scope) {
     assert(scope == NULL);
     assert(m_scope != NULL);
 
-    if (m_stats != NULL) {
-        return m_stats->checkSymbols(m_scope);
-    } else {
-        return 0;
+    int j = 0;
+    for (unsigned int i = 0; i < m_stats.size(); i++) {
+        j += m_stats[i]->checkSymbols(m_scope);
     }
+
+    return j;
 }
 
 string StatementExprAST::toString(int level) const {
     stringstream s;
-    if (m_labels != NULL) {
-        s << m_labels->toString(level);
+    for (unsigned int i = 0; i < m_labels.size(); i++) {
+        s << syms.get(m_labels[i]);
     }
     s << m_stat->toString(level);
     return s.str();
 }
 
 StatementExprAST::~StatementExprAST() {
-    delete m_labels;
     delete m_stat;
 }
 
 vector<Symbol> StatementExprAST::collectDefinedSymbols() {
     vector<Symbol> v = m_stat->collectDefinedSymbols();
-    if (m_labels != NULL) {
-        vector<Symbol> w = m_labels->collectDefinedSymbols();
-        for (unsigned int i = 0; i < w.size(); i++) {
-            Symbol s = w[i];
-            s.type = Label;
-            v.push_back(s);
-        }
+    for (unsigned int i = 0; i < m_labels.size(); i++) {
+        v.push_back(Symbol(m_labels[i], Label));
     }
     return v;
+}
+
+CallExprAST::CallExprAST(sym_t callee, ExprList *args)
+    : ExprAST(), m_callee(callee)
+{
+    if (args != NULL) {
+        m_args = args->get();        
+        delete args;
+    }
 }
 
 string CallExprAST::toString(int level) const {
     stringstream s;
     s << string(level * INDENT, ' ') << "CALL: " << syms.get(m_callee) << endl;
-    s << m_args->toString(level + 1);
+    for (unsigned int i = 0; i < m_args.size(); i++) {
+        s << m_args[i]->toString(level + 1);
+    }
     return s.str();
 }
 
 CallExprAST::~CallExprAST() {
-    delete m_args;
+    for (unsigned int i = 0; i < m_args.size(); i++) {
+        delete m_args[i];
+    }
+}
+
+int CallExprAST::checkSymbols(Scope *scope) {
+    int j = 0;
+    for (unsigned int i = 0; i < m_args.size(); i++) {
+        j += m_args[i]->checkSymbols(scope);
+    }
+    return j;
 }
 
 static const char *opstr(int op) {
@@ -213,34 +174,39 @@ static const char *opstr(int op) {
     }
 }
 
-string BinaryExprAST::toString(int level) const {
-    stringstream s;
-    s << string(level * INDENT, ' ') << opstr(m_op);
-    if (m_scope != NULL) {
-        s << "; " << m_scope->toString();
-    } else {
-        s << endl;
+IfExprAST::IfExprAST(ExprAST *cond, ExprList *then)
+    : ExprAST(), m_cond(cond)
+{
+    if (then != NULL) {
+        m_then = then->get();
+        delete then;
     }
-    s << m_lhs->toString(level + 1);
-    s << m_rhs->toString(level + 1);
+}
+
+string IfExprAST::toString(int level) const {
+    stringstream s;
+    s << string(level * INDENT, ' ') << "IF; " << m_scope->toString();
+    s << m_cond->toString(level + 1);
+    for (unsigned int i = 0; i < m_then.size(); i++) {
+        s << m_then[i]->toString(level + 1);
+    }
     return s.str();
 }
 
-BinaryExprAST::~BinaryExprAST() {
-    delete m_lhs;
-    delete m_rhs;
+IfExprAST::~IfExprAST() {
+    delete m_cond;
+    for (unsigned int i = 0; i < m_then.size(); i++) {
+        delete m_then[i];
+    }
 }
 
-vector<Symbol> BinaryExprAST::collectDefinedSymbols() {
-    switch (m_op) {
-    case IF:
-        break;
-    case VAR: return m_lhs->collectDefinedSymbols();
-    default: return vector<Symbol>();
-    }
-
+vector<Symbol> IfExprAST::collectDefinedSymbols() {
     m_scope = new Scope;
-    vector<Symbol> syms = m_rhs->collectDefinedSymbols();
+    vector<Symbol> syms;
+    for (unsigned int i = 0; i < m_then.size(); i++) {
+        vector<Symbol> tsyms = m_then[i]->collectDefinedSymbols();
+        syms.insert(syms.begin(), tsyms.begin(), tsyms.end());
+    }
     for (vector<Symbol>::iterator it = syms.begin(); it != syms.end(); ) {
         Symbol s = *it;
         if (s.type == Label) {
@@ -254,22 +220,52 @@ vector<Symbol> BinaryExprAST::collectDefinedSymbols() {
     return syms;
 }
 
-int BinaryExprAST::checkSymbols(Scope *scope) {
+int IfExprAST::checkSymbols(Scope *scope) {
     assert(scope != NULL);
 
     /* lhs is always in the parent scope.  */
 
     int j = 0;
-    j += m_lhs->checkSymbols(scope);
-    
-    /* rhs can start a new (merged) scope in IF statements. */
+    j += m_cond->checkSymbols(scope);
 
-    if (m_op == IF) {
-        assert(m_scope != NULL);
-        m_scope->merge(scope);
-        scope = m_scope;
+    /* rhs starts a new (merged) scope in IF statements. */
+
+    assert(m_scope != NULL);
+    m_scope->merge(scope);
+    scope = m_scope;
+
+    for (unsigned int i = 0; i < m_then.size(); i++) {
+        j += m_then[i]->checkSymbols(scope);
     }
+    return j;
+}
 
+string BinaryExprAST::toString(int level) const {
+    stringstream s;
+    s << string(level * INDENT, ' ') << opstr(m_op) << endl;
+    s << m_lhs->toString(level + 1);
+    s << m_rhs->toString(level + 1);
+    return s.str();
+}
+
+BinaryExprAST::~BinaryExprAST() {
+    delete m_lhs;
+    delete m_rhs;
+}
+
+vector<Symbol> BinaryExprAST::collectDefinedSymbols() {
+    switch (m_op) {
+    case VAR: return m_lhs->collectDefinedSymbols();
+    default: break;
+    }
+    return vector<Symbol>();
+}
+
+int BinaryExprAST::checkSymbols(Scope *scope) {
+    assert(scope != NULL);
+
+    int j = 0;
+    j += m_lhs->checkSymbols(scope);
     j += m_rhs->checkSymbols(scope);
     return j;
 }

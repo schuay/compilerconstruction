@@ -21,8 +21,8 @@ int errcount = 0;
     int sym;
     long val;
     ExprAST *n;
-    SymListExprAST *syms;
-    ListExprAST *exprs;
+    SymList *syms;
+    ExprList *exprs;
 }
 
 %start program
@@ -46,14 +46,14 @@ funcdef     :   ID '(' pars ')' stats END
 pars        :   /* empty */
                     { $<syms>$ = NULL; }
             |   ID
-                    { $<syms>$ = SymListExprAST::push_back(NULL, $<sym>1); }
+                    { $<syms>$ = SymList::push_back(NULL, $<sym>1); }
             |   ID ','  pars
-                    { $<syms>$ = SymListExprAST::push_back($<syms>3, $<sym>1); }
+                    { $<syms>$ = SymList::push_back($<syms>3, $<sym>1); }
             ;
 stats       :   /* empty */
                     { $<exprs>$ = NULL; }
             |   stats singlestat ';'
-                    { $<exprs>$ = ListExprAST::push_back($<exprs>1, $<n>2); }
+                    { $<exprs>$ = ExprList::push_back($<exprs>1, $<n>2); }
             |   stats error ';' { yyerrok; }
                     { $<exprs>$ = $<exprs>1; }
             ;
@@ -63,16 +63,16 @@ singlestat  :   stat
                     { $<n>$ = new StatementExprAST($<syms>1, $<n>2); }
             ;
 labels      :   ID ':'
-                    { $<syms>$ = SymListExprAST::push_back(NULL, $<sym>1); }
+                    { $<syms>$ = SymList::push_back(NULL, $<sym>1); }
             |   labels ID ':'
-                    { $<syms>$ = SymListExprAST::push_back($<syms>1, $<sym>2); }
+                    { $<syms>$ = SymList::push_back($<syms>1, $<sym>2); }
             ;
 stat        :   RETURN expr
                     { $<n>$ = new UnaryExprAST(RETURN, $<n>2); }
             |   GOTO ID
                     { $<n>$ = new UnaryExprAST(GOTO, new SymbolExprAST($<sym>2)); }
             |   IF expr THEN stats END
-                    { $<n>$ = new BinaryExprAST(IF, $<n>2, $<exprs>4); }
+                    { $<n>$ = new IfExprAST($<n>2, $<exprs>4); }
             |   VAR ID '=' expr
                     { $<n>$ = new BinaryExprAST(VAR, new SymbolExprAST($<sym>2), $<n>4); }
             |   lexpr '=' expr
@@ -119,9 +119,9 @@ unary       :   NOT unary
 args        :   /* empty */
                     { $<exprs>$ = NULL; }
             |   expr
-                    { $<exprs>$ = ListExprAST::push_back(NULL, $<n>1); }
+                    { $<exprs>$ = ExprList::push_back(NULL, $<n>1); }
             |   expr ',' args
-                    { $<exprs>$ = ListExprAST::push_back($<exprs>3, $<n>1); }
+                    { $<exprs>$ = ExprList::push_back($<exprs>3, $<n>1); }
             ;
 term        :   '(' expr ')'
                     { $<n>$ = $<n>2; }
