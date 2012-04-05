@@ -22,7 +22,7 @@ int errcount = 0;
     long val;
     ExprAST *n;
     SymList *syms;
-    ListExprAST *exprs;
+    ExprList *exprs;
 }
 
 %start program
@@ -53,7 +53,7 @@ pars        :   /* empty */
 stats       :   /* empty */
                     { $<exprs>$ = NULL; }
             |   stats singlestat ';'
-                    { $<exprs>$ = ListExprAST::push_back($<exprs>1, $<n>2); }
+                    { $<exprs>$ = ExprList::push_back($<exprs>1, $<n>2); }
             |   stats error ';' { yyerrok; }
                     { $<exprs>$ = $<exprs>1; }
             ;
@@ -119,9 +119,9 @@ unary       :   NOT unary
 args        :   /* empty */
                     { $<exprs>$ = NULL; }
             |   expr
-                    { $<exprs>$ = ListExprAST::push_back(NULL, $<n>1); }
+                    { $<exprs>$ = ExprList::push_back(NULL, $<n>1); }
             |   expr ',' args
-                    { $<exprs>$ = ListExprAST::push_back($<exprs>3, $<n>1); }
+                    { $<exprs>$ = ExprList::push_back($<exprs>3, $<n>1); }
             ;
 term        :   '(' expr ')'
                     { $<n>$ = $<n>2; }

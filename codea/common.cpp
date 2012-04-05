@@ -82,63 +82,16 @@ Value *SymbolExprAST::codegen() {
     return v ? v : errorV("Unknown variable name");
 }
 
-string ListExprAST::toString(int level) const {
-    stringstream s;
-    for (unsigned int i = 0; i < m_exprs.size(); i++) {
-        s << m_exprs[i]->toString(level);
-    }
-    return s.str();
-}
-
-ListExprAST::~ListExprAST() {
-    for (unsigned int i = 0; i < m_exprs.size(); i++) {
-        delete m_exprs[i];
-    }
-}
-
-ListExprAST *ListExprAST::push_back(ListExprAST *l, ExprAST *e) {
-    if (l == NULL) {
-        l = new ListExprAST();
-    }
-    l->m_exprs.push_back(e);
-    return l;
-}
-
-vector<Symbol> ListExprAST::collectDefinedSymbols() {
-    vector<Symbol> v;
-    for (unsigned int i = 0; i < m_exprs.size(); i++) {
-        vector<Symbol> w = m_exprs[i]->collectDefinedSymbols();
-        v.insert(v.end(), w.begin(), w.end());
-    }
-    return v;
-}
-
-int ListExprAST::checkSymbols(Scope *scope) {
-    int j = 0;
-    for (unsigned int i = 0; i < m_exprs.size(); i++) {
-        j += m_exprs[i]->checkSymbols(scope);
-    }
-    return j;
-}
-
-Value *ListExprAST::codegen() {
-    Value *v;
-    for (unsigned int i = 0; i < m_exprs.size(); i++) {
-        v = m_exprs[i]->codegen();
-        if (v == 0) {
-            break;
-        }
-    }
-
-    return v;
-}
-
-FunctionExprAST::FunctionExprAST(sym_t name, SymList *pars, ListExprAST *stats)
-    : ExprAST(), m_name(name), m_stats(stats) {
+FunctionExprAST::FunctionExprAST(sym_t name, SymList *pars, ExprList *stats)
+    : ExprAST(), m_name(name) {
     /* TODO: pars are reversed */
     if (pars) {
         m_pars = pars->get();
         delete pars;
+    }
+    if (stats) {
+        m_stats = stats->get();
+        delete stats;
     }
 }
 
@@ -155,22 +108,24 @@ string FunctionExprAST::toString(int level) const {
         s << syms.get(m_pars[i]);
     }
     s << "STATS:" << endl;
-    if (m_stats != NULL) {
-        s << m_stats->toString(level + 1);
+    for (unsigned int i = 0; i < m_stats.size(); i++) {
+        s << m_stats[i]->toString(level + 1);
     }
     return s.str();
 }
 
 FunctionExprAST::~FunctionExprAST() {
-    delete m_stats;
+    for (unsigned int i = 0; i < m_stats.size(); i++) {
+        delete m_stats[i];
+    }
     delete m_scope;
 }
 
 vector<Symbol> FunctionExprAST::collectDefinedSymbols() {
     m_scope = new Scope;
     m_scope->insertAll(m_pars);
-    if (m_stats != NULL) {
-        m_scope->insertAll(m_stats->collectDefinedSymbols());
+    for (unsigned int i = 0; i < m_stats.size(); i++) {
+        m_scope->insertAll(m_stats[i]->collectDefinedSymbols());
     }
     return vector<Symbol>();
 }
@@ -179,11 +134,12 @@ int FunctionExprAST::checkSymbols(Scope *scope) {
     assert(scope == NULL);
     assert(m_scope != NULL);
 
-    if (m_stats != NULL) {
-        return m_stats->checkSymbols(m_scope);
-    } else {
-        return 0;
+    int j = 0;
+    for (unsigned int i = 0; i < m_stats.size(); i++) {
+        j += m_stats[i]->checkSymbols(m_scope);
     }
+
+    return j;
 }
 
 Value *FunctionExprAST::codegen() {
@@ -205,8 +161,8 @@ Value *FunctionExprAST::codegen() {
     BasicBlock *bb = BasicBlock::Create(getGlobalContext(), "entry", f);
     builder.SetInsertPoint(bb);
 
-    if (m_stats != NULL) {
-        Value *retVal = m_stats->codegen();
+    for (unsigned int i = 0; i < m_stats.size(); i++) {
+        Value *retVal = m_stats[i]->codegen();
         if (retVal == 0) {
             f->eraseFromParent();
             return 0;
@@ -245,15 +201,36 @@ Value *StatementExprAST::codegen() {
     return m_stat->codegen();
 }
 
+CallExprAST::CallExprAST(sym_t callee, ExprList *args)
+    : ExprAST(), m_callee(callee)
+{
+    if (args != NULL) {
+        m_args = args->get();        
+        delete args;
+    }
+}
+
 string CallExprAST::toString(int level) const {
     stringstream s;
     s << string(level * INDENT, ' ') << "CALL: " << syms.get(m_callee) << endl;
-    s << m_args->toString(level + 1);
+    for (unsigned int i = 0; i < m_args.size(); i++) {
+        s << m_args[i]->toString(level + 1);
+    }
     return s.str();
 }
 
 CallExprAST::~CallExprAST() {
-    delete m_args;
+    for (unsigned int i = 0; i < m_args.size(); i++) {
+        delete m_args[i];
+    }
+}
+
+int CallExprAST::checkSymbols(Scope *scope) {
+    int j = 0;
+    for (unsigned int i = 0; i < m_args.size(); i++) {
+        j += m_args[i]->checkSymbols(scope);
+    }
+    return j;
 }
 
 Value *CallExprAST::codegen() {
@@ -280,22 +257,39 @@ static const char *opstr(int op) {
     }
 }
 
+IfExprAST::IfExprAST(ExprAST *cond, ExprList *then)
+    : ExprAST(), m_cond(cond)
+{
+    if (then != NULL) {
+        m_then = then->get();
+        delete then;
+    }
+}
+
 string IfExprAST::toString(int level) const {
     stringstream s;
     s << string(level * INDENT, ' ') << "IF; " << m_scope->toString();
     s << m_cond->toString(level + 1);
-    s << m_then->toString(level + 1);
+    for (unsigned int i = 0; i < m_then.size(); i++) {
+        s << m_then[i]->toString(level + 1);
+    }
     return s.str();
 }
 
 IfExprAST::~IfExprAST() {
     delete m_cond;
-    delete m_then;
+    for (unsigned int i = 0; i < m_then.size(); i++) {
+        delete m_then[i];
+    }
 }
 
 vector<Symbol> IfExprAST::collectDefinedSymbols() {
     m_scope = new Scope;
-    vector<Symbol> syms = m_then->collectDefinedSymbols();
+    vector<Symbol> syms;
+    for (unsigned int i = 0; i < m_then.size(); i++) {
+        vector<Symbol> tsyms = m_then[i]->collectDefinedSymbols();
+        syms.insert(syms.begin(), tsyms.begin(), tsyms.end());
+    }
     for (vector<Symbol>::iterator it = syms.begin(); it != syms.end(); ) {
         Symbol s = *it;
         if (s.type == Label) {
@@ -323,7 +317,9 @@ int IfExprAST::checkSymbols(Scope *scope) {
     m_scope->merge(scope);
     scope = m_scope;
 
-    j += m_then->checkSymbols(scope);
+    for (unsigned int i = 0; i < m_then.size(); i++) {
+        j += m_then[i]->checkSymbols(scope);
+    }
     return j;
 }
 

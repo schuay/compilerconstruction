@@ -96,19 +96,6 @@ public:
     virtual Value *codegen();
 };
 
-class ListExprAST : public ExprAST {
-    vector<ExprAST *> m_exprs;
-    ListExprAST() {}
-public:
-    ListExprAST(vector<ExprAST *> exprs) : ExprAST(), m_exprs(exprs) {}
-    virtual ~ListExprAST();
-    static ListExprAST *push_back(ListExprAST *l, ExprAST *e);
-    virtual string toString(int level) const;
-    virtual vector<Symbol> collectDefinedSymbols();
-    virtual int checkSymbols(Scope *scope);
-    virtual Value *codegen();
-};
-
 template <class T>
 class UnionList {
 public:
@@ -130,10 +117,11 @@ private:
 };
 
 typedef UnionList<sym_t> SymList;
+typedef UnionList<ExprAST *> ExprList;
 
 class FunctionExprAST : public ExprAST {
 public:
-    FunctionExprAST(sym_t name, SymList *pars, ListExprAST *stats);
+    FunctionExprAST(sym_t name, SymList *pars, ExprList *stats);
     virtual ~FunctionExprAST();
     virtual string toString(int level) const;
     virtual vector<Symbol> collectDefinedSymbols();
@@ -142,7 +130,7 @@ public:
 protected:
     sym_t m_name;
     vector<sym_t> m_pars;
-    ListExprAST *m_stats;
+    vector<ExprAST *> m_stats;
 };
 
 class StatementExprAST : public ExprAST {
@@ -161,22 +149,21 @@ public:
 
 class CallExprAST : public ExprAST {
     sym_t m_callee;
-    ListExprAST *m_args;
+    vector<ExprAST *> m_args;
 public:
-    CallExprAST(sym_t callee, ListExprAST *args)
-        : ExprAST(), m_callee(callee), m_args(args) {}
+    CallExprAST(sym_t callee, ExprList *args);
     virtual ~CallExprAST();
     virtual string toString(int level) const;
     virtual vector<Symbol> collectDefinedSymbols() { return vector<Symbol>(); }
-    virtual int checkSymbols(Scope *scope) { return m_args->checkSymbols(scope); }
+    virtual int checkSymbols(Scope *scope);
     virtual Value *codegen();
 };
 
 class IfExprAST : public ExprAST {
-    ExprAST *m_cond, *m_then;
+    ExprAST *m_cond;
+    vector<ExprAST *> m_then;
 public:
-    IfExprAST(ExprAST *cond, ExprAST *then)
-        : ExprAST(), m_cond(cond), m_then(then) {}
+    IfExprAST(ExprAST *cond, ExprList *then);
     virtual ~IfExprAST();
     virtual string toString(int level) const;
     virtual vector<Symbol> collectDefinedSymbols();
