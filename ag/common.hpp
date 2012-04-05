@@ -33,7 +33,7 @@ public:
 /* Used only for checking validity of scopes. Code generation
    is simplified by using a global symbol table. */
 class Scope {
-    vector<sym_t> m_symbols;
+    vector<sym_t> m_vars;
 public:
     void merge(const Scope *that);
     void insert(sym_t s);
