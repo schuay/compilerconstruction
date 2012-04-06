@@ -46,9 +46,9 @@ funcdef     :   IDENT '(' pars ')' stats END
 pars        :   /* empty */
                     { $<syms>$ = NULL; }
             |   IDENT
-                    { $<syms>$ = SymList::push_back(NULL, $<sym>1); }
+                    { $<syms>$ = SymList::push_front(NULL, $<sym>1); }
             |   IDENT ','  pars
-                    { $<syms>$ = SymList::push_back($<syms>3, $<sym>1); }
+                    { $<syms>$ = SymList::push_front($<syms>3, $<sym>1); }
             ;
 stats       :   /* empty */
                     { $<exprs>$ = NULL; }
@@ -119,9 +119,9 @@ unary       :   NOT unary
 args        :   /* empty */
                     { $<exprs>$ = NULL; }
             |   expr
-                    { $<exprs>$ = ExprList::push_back(NULL, $<n>1); }
+                    { $<exprs>$ = ExprList::push_front(NULL, $<n>1); }
             |   expr ',' args
-                    { $<exprs>$ = ExprList::push_back($<exprs>3, $<n>1); }
+                    { $<exprs>$ = ExprList::push_front($<exprs>3, $<n>1); }
             ;
 term        :   '(' expr ')'
                     { $<n>$ = $<n>2; }

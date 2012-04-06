@@ -1,5 +1,6 @@
 #include <string>
 #include <vector>
+#include <list>
 #include <llvm/Value.h>
 #include <llvm/Module.h>
 #include <llvm/PassManager.h>
@@ -10,6 +11,7 @@
 
 using std::string;
 using std::vector;
+using std::list;
 using namespace llvm;
 
 typedef int sym_t;
@@ -106,18 +108,25 @@ public:
     static UnionList<T> *push_back(UnionList<T> *l, T e) {
         if (l == NULL) {
             l = new UnionList<T>;
-            l->m_v = vector<T>();
         }
         l->m_v.push_back(e);
         return l;
     }
 
-    const vector<T> &get() const {
-        return m_v;
+    static UnionList<T> *push_front(UnionList<T> *l, T e) {
+        if (l == NULL) {
+            l = new UnionList<T>;
+        }
+        l->m_v.push_front(e);
+        return l;
+    }
+
+    vector<T> get() const {
+        return vector<T>(m_v.begin(), m_v.end());
     }
 private:
     UnionList() {}
-    vector<T> m_v;
+    list<T> m_v;
 };
 
 typedef UnionList<sym_t> SymList;
