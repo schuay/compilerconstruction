@@ -174,12 +174,16 @@ Value *FunctionExprAST::codegen() {
     BasicBlock *bb = BasicBlock::Create(getGlobalContext(), "entry", f);
     builder.SetInsertPoint(bb);
 
-    for (unsigned int i = 0; i < m_stats.size(); i++) {
-        Value *retVal = m_stats[i]->codegen();
-        if (retVal == 0) {
-            f->eraseFromParent();
-            return 0;
+    if (m_stats.size() > 0) {
+        for (unsigned int i = 0; i < m_stats.size(); i++) {
+            Value *retVal = m_stats[i]->codegen();
+            if (retVal == 0) {
+                f->eraseFromParent();
+                return 0;
+            }
         }
+    } else {
+        builder.CreateRet(ConstantInt::get(getGlobalContext(), APInt(64, 0, true)));
     }
 
     verifyFunction(*f);

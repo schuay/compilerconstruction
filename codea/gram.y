@@ -148,8 +148,7 @@ void process_funcdef(ExprAST *n) {
     Value *ret = n->codegen();
     if (ret == 0) {
         fprintf(stderr, "codegen() returned 0.\n");
-    } else {
-        theModule->dump();
+        exit(ERR_SCOPE);
     }
 
     delete n;
