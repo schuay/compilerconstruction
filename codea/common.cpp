@@ -430,6 +430,7 @@ vector<Symbol> IfExprAST::collectDefinedSymbols() {
 
 int IfExprAST::checkSymbols(Scope *scope) {
     assert(scope != NULL);
+    assert(m_scope != NULL);
 
     /* lhs is always in the parent scope.  */
 
@@ -438,12 +439,12 @@ int IfExprAST::checkSymbols(Scope *scope) {
 
     /* rhs starts a new (merged) scope in IF statements. */
 
-    assert(m_scope != NULL);
-    m_scope->merge(scope);
-    scope = m_scope;
+    Scope s;
+    s.merge(m_scope);
+    s.merge(scope);
 
     for (unsigned int i = 0; i < m_then.size(); i++) {
-        j += m_then[i]->checkSymbols(scope);
+        j += m_then[i]->checkSymbols(&s);
     }
     return j;
 }
@@ -454,9 +455,17 @@ Value *IfExprAST::codegen() {
         return 0;
     }
 
-    v = builder.CreateICmpNE(v, ConstantInt::get(getGlobalContext(), APInt(64, 0, true)), "ifcond");
+    /* Create all local vars on the stack and store them in namedValues. */
 
     Function *f = builder.GetInsertBlock()->getParent();
+
+    const vector<sym_t> variables = m_scope->variables();
+    for (unsigned int i = 0; i < variables.size(); i++) {
+        AllocaInst *alloca = createEntryBlockAlloca(f, variables[i]);
+        namedValues[variables[i]] = alloca;
+    }
+
+    v = builder.CreateICmpNE(v, ConstantInt::get(getGlobalContext(), APInt(64, 0, true)), "ifcond");
 
     BasicBlock *thenb = BasicBlock::Create(getGlobalContext(), "then", f);
     BasicBlock *mergeb = BasicBlock::Create(getGlobalContext(), "ifcont");
