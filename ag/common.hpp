@@ -37,8 +37,8 @@ class Scope {
     vector<sym_t> m_labels;
 public:
     void merge(const Scope *that);
-    void insert(sym_t s);
-    void insertAll(vector<sym_t> v);
+    void insert(Symbol s);
+    void insertAll(vector<sym_t> v, enum SymType t);
     void insertAll(vector<Symbol> v);
     int contains(sym_t s, enum SymType t) const;
     int contains(sym_t s) const;

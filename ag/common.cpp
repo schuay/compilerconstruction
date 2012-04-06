@@ -82,7 +82,7 @@ FunctionExprAST::~FunctionExprAST() {
 
 vector<Symbol> FunctionExprAST::collectDefinedSymbols() {
     m_scope = new Scope;
-    m_scope->insertAll(m_pars);
+    m_scope->insertAll(m_pars, Var);
     for (unsigned int i = 0; i < m_stats.size(); i++) {
         m_scope->insertAll(m_stats[i]->collectDefinedSymbols());
     }
@@ -213,7 +213,7 @@ vector<Symbol> IfExprAST::collectDefinedSymbols() {
             it++;
             continue;
         }
-        m_scope->insert(s.sym);
+        m_scope->insert(s);
         it = syms.erase(it);
     }
 
@@ -307,26 +307,29 @@ string SymbolTable::toString() const {
 }
 
 void Scope::merge(const Scope *that) {
-    insertAll(that->m_vars);
+    insertAll(that->m_vars, Var);
+    insertAll(that->m_labels, Label);
 }
 
-void Scope::insert(sym_t s) {
-    if (contains(s)) {
-        fprintf(stderr, "Redefinition of symbol '%s'\n", syms.get(s).c_str());
+void Scope::insert(Symbol s) {
+    if (contains(s.sym)) {
+        fprintf(stderr, "Redefinition of symbol '%s'\n",
+                syms.get(s.sym).c_str());
         exit(ERR_SCOPE);
     }
-    m_vars.push_back(s);
+    vector<sym_t> &v = (s.type == Var) ? m_vars : m_labels;
+    v.push_back(s.sym);
 }
 
-void Scope::insertAll(vector<sym_t> v) {
+void Scope::insertAll(vector<sym_t> v, enum SymType t) {
     for (unsigned int i = 0; i < v.size(); i++) {
-        insert(v[i]);
+        insert(Symbol(v[i], t));
     }
 }
 
 void Scope::insertAll(vector<Symbol> v) {
     for (unsigned int i = 0; i < v.size(); i++) {
-        insert(v[i].sym);
+        insert(v[i]);
     }
 }
 
