@@ -433,7 +433,7 @@ string SymbolTable::toString() const {
 }
 
 void Scope::merge(const Scope *that) {
-    insertAll(that->m_symbols);
+    insertAll(that->m_vars);
 }
 
 void Scope::insert(sym_t s) {
@@ -441,7 +441,7 @@ void Scope::insert(sym_t s) {
         fprintf(stderr, "Redefinition of symbol '%s'\n", syms.get(s).c_str());
         exit(ERR_SCOPE);
     }
-    m_symbols.push_back(s);
+    m_vars.push_back(s);
 }
 
 void Scope::insertAll(vector<sym_t> v) {
@@ -457,8 +457,8 @@ void Scope::insertAll(vector<Symbol> v) {
 }
 
 int Scope::contains(sym_t s) const {
-    for (unsigned int i = 0; i < m_symbols.size(); i++) {
-        if (s == m_symbols[i]) {
+    for (unsigned int i = 0; i < m_vars.size(); i++) {
+        if (s == m_vars[i]) {
             return 1;
         }
     }
@@ -468,8 +468,8 @@ int Scope::contains(sym_t s) const {
 string Scope::toString() const {
     stringstream s;
     s << "Current scope: ";
-    for (unsigned int i = 0; i < m_symbols.size(); i++) {
-        s << syms.get(m_symbols[i]) << ",";
+    for (unsigned int i = 0; i < m_vars.size(); i++) {
+        s << syms.get(m_vars[i]) << ",";
     }
     s << endl;
     return s.str();
