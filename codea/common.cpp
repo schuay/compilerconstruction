@@ -87,6 +87,19 @@ static AllocaInst *createEntryBlockAlloca(Function *f, sym_t s) {
     return b.CreateAlloca(Type::getInt64Ty(getGlobalContext()), 0, syms.get(s).c_str());
 }
 
+static Function *create_or_get_fn(string name, int argc) {
+    Function *f = theModule->getFunction(name);
+    if (f == NULL) {
+        vector<Type *> ints(argc,
+                            Type::getInt64Ty(getGlobalContext()));
+        FunctionType *ft = FunctionType::get(Type::getInt64Ty(getGlobalContext()),
+                                             ints, false);
+        f = Function::Create(ft, Function::ExternalLinkage,
+                                       name, theModule);
+    }
+    return f;
+}
+
 Value *errorV(const char *str) { fprintf(stderr, "Error: %s\n", str); return 0; }
 
 string NumberExprAST::toString(int level) const {
@@ -216,12 +229,7 @@ int FunctionExprAST::checkSymbols(Scope * /* scope UNUSED */) {
 Value *FunctionExprAST::codegen() {
     namedValues.clear();
 
-    vector<Type *> ints(m_pars.size(),
-                        Type::getInt64Ty(getGlobalContext()));
-    FunctionType *ft = FunctionType::get(Type::getInt64Ty(getGlobalContext()),
-                                         ints, false);
-    Function *f = Function::Create(ft, Function::ExternalLinkage,
-                                   syms.get(m_name), theModule);
+    Function *f = create_or_get_fn(syms.get(m_name), m_pars.size());
 
     BasicBlock *bb = BasicBlock::Create(getGlobalContext(), "entry", f);
     builder.SetInsertPoint(bb);
@@ -321,7 +329,20 @@ int CallExprAST::checkSymbols(Scope *scope) {
 }
 
 Value *CallExprAST::codegen() {
-    return 0; /* TODO */
+    Function *f = create_or_get_fn(syms.get(m_callee), m_args.size());
+    if (f->arg_size() != m_args.size()) {
+        fprintf(stderr, "Incorrect number of args passed to %s.\n", syms.get(m_callee).c_str());
+    }
+
+    vector<Value *> argsv;
+    for (unsigned int i = 0; i < m_args.size(); i++) {
+        argsv.push_back(m_args[i]->codegen());
+        if (argsv.back() == 0) {
+            return 0;
+        }
+    }
+
+    return builder.CreateCall(f, argsv, "calltmp");
 }
 
 static const char *opstr(int op) {
