@@ -42,11 +42,13 @@ public:
    is simplified by using a global symbol table. */
 class Scope {
     vector<sym_t> m_vars;
+    vector<sym_t> m_labels;
 public:
     void merge(const Scope *that);
     void insert(sym_t s);
     void insertAll(vector<sym_t> v);
     void insertAll(vector<Symbol> v);
+    int contains(sym_t s, enum SymType t) const;
     int contains(sym_t s) const;
     string toString() const;
 };
