@@ -52,6 +52,8 @@ public:
     void insertAll(vector<Symbol> v);
     int contains(sym_t s, enum SymType t) const;
     int contains(sym_t s) const;
+    const vector<sym_t> &variables() const;
+    const vector<sym_t> &labels() const;
     string toString() const;
 };
 
@@ -96,6 +98,18 @@ class SymbolExprAST : public ExprAST {
 public:
     SymbolExprAST(sym_t sym, enum SymType type) : ExprAST(), m_sym(sym), m_type(type) {}
     SymbolExprAST(sym_t sym) : ExprAST(), m_sym(sym), m_type(Var) {}
+    virtual string toString(int level) const;
+    virtual vector<Symbol> collectDefinedSymbols();
+    virtual int checkSymbols(Scope *scope);
+    virtual Value *codegen();
+};
+
+class AddrExprAST : public ExprAST {
+    sym_t m_sym;
+    enum SymType m_type;
+public:
+    AddrExprAST(sym_t sym, enum SymType type) : ExprAST(), m_sym(sym), m_type(type) {}
+    AddrExprAST(sym_t sym) : ExprAST(), m_sym(sym), m_type(Var) {}
     virtual string toString(int level) const;
     virtual vector<Symbol> collectDefinedSymbols();
     virtual int checkSymbols(Scope *scope);

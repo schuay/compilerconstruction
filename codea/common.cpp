@@ -129,6 +129,31 @@ Value *SymbolExprAST::codegen() {
     return builder.CreateLoad(v, m_sym);
 }
 
+string AddrExprAST::toString(int level) const {
+    stringstream s;
+    s << string(level * INDENT, ' ') << "SYMADDR: " << syms.get(m_sym) << endl;
+    return s.str();
+}
+
+vector<Symbol> AddrExprAST::collectDefinedSymbols() {
+    vector<Symbol> v;
+    v.push_back(Symbol(m_sym, m_type));
+    return v;
+}
+
+int AddrExprAST::checkSymbols(Scope *scope) {
+    if (!scope->contains(m_sym, m_type)) {
+        fprintf(stderr, "undefined reference to '%s'\n", syms.get(m_sym).c_str());
+        return 1;
+    }
+    return 0;
+}
+
+Value *AddrExprAST::codegen() {
+    AllocaInst *v = namedValues[m_sym];
+    return (v != 0 ? v : errorV("Unknown variable name"));
+}
+
 FunctionExprAST::FunctionExprAST(sym_t name, SymList *pars, ExprList *stats)
     : ExprAST(), m_name(name) {
     if (pars) {
@@ -201,15 +226,20 @@ Value *FunctionExprAST::codegen() {
     BasicBlock *bb = BasicBlock::Create(getGlobalContext(), "entry", f);
     builder.SetInsertPoint(bb);
 
+
+    /* Create all local vars on the stack and store them in namedValues. */
+    const vector<sym_t> variables = m_scope->variables();
+    for (unsigned int i = 0; i < variables.size(); i++) {
+        AllocaInst *alloca = createEntryBlockAlloca(f, variables[i]);
+        namedValues[variables[i]] = alloca;
+    }
+
+    /* Name args and store their values. */
     unsigned int i = 0;
     for (Function::arg_iterator ai = f->arg_begin(); i != m_pars.size();
          ++ai, ++i) {
         ai->setName(syms.get(m_pars[i]));
-
-        /* Store args on the stack. */
-        AllocaInst *alloca = createEntryBlockAlloca(f, m_pars[i]);
-        builder.CreateStore(ai, alloca);
-        namedValues[m_pars[i]] = alloca;
+        builder.CreateStore(ai, namedValues[m_pars[i]]);
     }
 
     if (m_stats.size() > 0) {
@@ -420,7 +450,7 @@ Value *BinaryExprAST::codegen() {
 
     switch (m_op) {
     case VAR:
-    case '=': return errorV("{VAR, =} not yet implemented"); /* TODO */
+    case '=': return builder.CreateStore(r, l);    /* TODO: this needs to work for memory locations, not just VARs */
     case '*': return builder.CreateMul(l, r, "multmp");
     case '+': return builder.CreateAdd(l, r, "addtmp");
     case AND: return builder.CreateAnd(l, r, "andtmp");
@@ -522,8 +552,17 @@ int Scope::contains(sym_t s, enum SymType t) const {
     }
     return 0;
 }
+
 int Scope::contains(sym_t s) const {
     return (contains(s, Var) || contains(s, Label));
+}
+
+const vector<sym_t> &Scope::variables() const {
+    return m_vars;
+}
+
+const vector<sym_t> &Scope::labels() const {
+    return m_labels;
 }
 
 string Scope::toString() const {

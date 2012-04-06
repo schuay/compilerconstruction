@@ -74,13 +74,13 @@ stat        :   RETURN expr
             |   IF expr THEN stats END
                     { $<n>$ = new IfExprAST($<n>2, $<exprs>4); }
             |   VAR IDENT '=' expr
-                    { $<n>$ = new BinaryExprAST(VAR, new SymbolExprAST($<sym>2), $<n>4); }
+                    { $<n>$ = new BinaryExprAST(VAR, new AddrExprAST($<sym>2), $<n>4); }
             |   lexpr '=' expr
                     { $<n>$ = new BinaryExprAST('=', $<n>1, $<n>3); }
             |   term
             ;
 lexpr       :   IDENT
-                    { $<n>$ = new SymbolExprAST($<sym>1); }
+                    { $<n>$ = new AddrExprAST($<sym>1); }
             |   '*' unary
                     { $<n>$ = new UnaryExprAST(DEREF, $<n>2); }
             ;
