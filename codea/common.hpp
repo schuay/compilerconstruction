@@ -19,9 +19,9 @@ class SymbolTable;
 
 extern SymbolTable syms;
 extern Module *theModule;
-extern FunctionPassManager *fpm;
+extern PassManager *pm;
 
-void initLLVM();
+void printAsm();
 
 enum SymType {
     Var,

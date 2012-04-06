@@ -10,10 +10,12 @@
 #include <llvm/Support/IRBuilder.h>
 #include <llvm/Analysis/Passes.h>
 #include <llvm/Analysis/Verifier.h>
-//#include <llvm/Assembly/PrintModulePass.h>
-//#include <llvm/Support/raw_ostream.h>
-//#include <llvm/Support/TargetRegistry.h>
-//#include <llvm/Target/TargetMachine.h>
+#include <llvm/Support/raw_ostream.h>
+#include <llvm/Support/FormattedStream.h>
+#include <llvm/Target/TargetData.h>
+#include <llvm/Target/TargetMachine.h>
+#include <llvm/Support/TargetRegistry.h>
+#include <llvm/Support/TargetSelect.h>
 
 #include "common.hpp"
 #include "gram.tab.hpp"
@@ -26,21 +28,32 @@ using std::stringstream;
 using std::endl;
 using std::map;
 
-Module *theModule;
+Module *theModule = new Module("mainmodule", getGlobalContext());
 static IRBuilder<> builder(getGlobalContext());
 static map<int, Value*> namedValues;
-FunctionPassManager *fpm;
 
-void initLLVM() {
-    theModule = new Module("mainmodule", getGlobalContext());
-    fpm = new FunctionPassManager(theModule);
+void printAsm() {
+    InitializeNativeTarget();
+    InitializeNativeTargetAsmPrinter();
 
-//    string err;
-//    const Target *t = TargetRegistry::lookupTarget("amd64-PC-Linux", err);
-//    printf(err.c_str());
+    Triple trp("x86_64-linux-gnu");
+    theModule->setTargetTriple(trp.getTriple());
 
-//    fpm->add(t->createAsmPrinter(t->createTargetMachine()));
-    fpm->doInitialization();
+    raw_fd_ostream rostr(fileno(stdout), false);
+    formatted_raw_ostream frostr(rostr);
+
+    string err;
+    const Target *trg = TargetRegistry::lookupTarget(trp.getTriple(), err);
+    TargetMachine *tgm = trg->createTargetMachine(trp.getTriple(), "", "");
+
+    PassManager pm;
+    pm.add(new TargetData(theModule));
+    // Override default to generate verbose assembly.
+    tgm->setAsmVerbosityDefault(true);
+    tgm->addPassesToEmitFile(pm, frostr, TargetMachine::CGFT_AssemblyFile,
+                            CodeGenOpt::None, false);
+
+    pm.run(*theModule);
 }
 
 Value *errorV(const char *str) { fprintf(stderr, "Error: %s\n", str); return 0; }
@@ -130,7 +143,7 @@ vector<Symbol> FunctionExprAST::collectDefinedSymbols() {
     return vector<Symbol>();
 }
 
-int FunctionExprAST::checkSymbols(Scope *scope) {
+int FunctionExprAST::checkSymbols(Scope * /* scope UNUSED */) {
     assert(scope == NULL);
     assert(m_scope != NULL);
 
@@ -170,7 +183,6 @@ Value *FunctionExprAST::codegen() {
     }
 
     verifyFunction(*f);
-    fpm->run(*f);
 
     return f;
 }

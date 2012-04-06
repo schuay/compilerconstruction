@@ -167,11 +167,10 @@ void yyerror(const char *p) {
 int main(void) {
     yydebug = 0;
 
-    initLLVM();
-
     yyparse();
 
     //printf("%s", syms.toString().c_str());
+    printAsm();
     delete theModule;
 
     if (errcount > 0) {
