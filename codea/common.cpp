@@ -34,7 +34,7 @@ using std::map;
 /* Globals used during code generation. */
 Module *theModule = new Module("mainmodule", getGlobalContext());
 static IRBuilder<> builder(getGlobalContext());
-static map<int, AllocaInst*> namedValues;
+static map<int, Value *> namedValues;
 
 void printAsm() {
     InitializeNativeTarget();
@@ -134,7 +134,6 @@ int SymbolExprAST::checkSymbols(Scope *scope) {
 }
 
 Value *SymbolExprAST::codegen() {
-    /* TODO: this also needs to work for labels. */
     Value *v = namedValues[m_sym];
     if (v == 0) {
         return errorV("Unknown variable name");
@@ -163,7 +162,7 @@ int AddrExprAST::checkSymbols(Scope *scope) {
 }
 
 Value *AddrExprAST::codegen() {
-    AllocaInst *v = namedValues[m_sym];
+    Value *v = namedValues[m_sym];
     return (v != 0 ? v : errorV("Unknown variable name"));
 }
 
@@ -234,6 +233,12 @@ Value *FunctionExprAST::codegen() {
     BasicBlock *bb = BasicBlock::Create(getGlobalContext(), "entry", f);
     builder.SetInsertPoint(bb);
 
+    /* Create a block for each label and store them in namedValues. */
+    const vector<sym_t> labels = m_scope->labels();
+    for (unsigned int i = 0; i < labels.size(); i++) {
+        BasicBlock *blk = BasicBlock::Create(getGlobalContext(), syms.get(labels[i]));
+        namedValues[labels[i]] = blk;
+    }
 
     /* Create all local vars on the stack and store them in namedValues. */
     const vector<sym_t> variables = m_scope->variables();
@@ -292,7 +297,19 @@ vector<Symbol> StatementExprAST::collectDefinedSymbols() {
 }
 
 Value *StatementExprAST::codegen() {
-    /* TODO labels*/
+    Function *f = builder.GetInsertBlock()->getParent();
+
+    /* A label translates to a block, which may be empty (except
+       for branching to the next block). */
+    for (unsigned int i = 0; i < m_labels.size(); i++) {
+        BasicBlock *blk = dynamic_cast<BasicBlock *>(namedValues[m_labels[i]]);
+        assert(blk != NULL);
+
+        builder.CreateBr(blk);
+
+        f->getBasicBlockList().push_back(blk);
+        builder.SetInsertPoint(blk);
+    }
     return m_stat->codegen();
 }
 
