@@ -535,7 +535,9 @@ Value *BinaryExprAST::codegen() {
 
     switch (m_op) {
     case VAR:
-    case '=': return builder.CreateStore(r, l);    /* TODO: this needs to work for memory locations, not just VARs */
+    case '=':
+        l = builder.CreateIntToPtr(l, Type::getInt64PtrTy(getGlobalContext()), "ptrtmp");
+        return builder.CreateStore(r, l);
     case '*': return builder.CreateMul(l, r, "multmp");
     case '+': return builder.CreateAdd(l, r, "addtmp");
     case AND: return builder.CreateAnd(l, r, "andtmp");

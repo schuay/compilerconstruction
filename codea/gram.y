@@ -82,7 +82,7 @@ stat        :   RETURN expr
 lexpr       :   IDENT
                     { $<n>$ = new AddrExprAST($<sym>1); }
             |   '*' unary
-                    { $<n>$ = new UnaryExprAST(DEREF, $<n>2); }
+                    { $<n>$ = $<n>2; }
             ;
 termmul     :   term
             |   termmul '*' term
