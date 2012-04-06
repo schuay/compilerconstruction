@@ -10,6 +10,8 @@
 #include <llvm/Support/IRBuilder.h>
 #include <llvm/Analysis/Passes.h>
 #include <llvm/Analysis/Verifier.h>
+#include <llvm/Transforms/Scalar.h>
+#include <llvm/Transforms/IPO.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Support/FormattedStream.h>
 #include <llvm/Target/TargetData.h>
@@ -48,10 +50,20 @@ void printAsm() {
 
     PassManager pm;
     pm.add(new TargetData(theModule));
-    // Override default to generate verbose assembly.
+
+    /* Override default to generate verbose assembly. */
     tgm->setAsmVerbosityDefault(true);
+
+    /* Optimizations. */
+    pm.add(createBasicAliasAnalysisPass());
+    pm.add(createInstructionCombiningPass());
+    pm.add(createReassociatePass());
+    pm.add(createGVNPass());
+    pm.add(createCFGSimplificationPass());
+
+    /* Add pass to print asm. */
     tgm->addPassesToEmitFile(pm, frostr, TargetMachine::CGFT_AssemblyFile,
-                            CodeGenOpt::None, false);
+                            CodeGenOpt::Default, false);
 
     pm.run(*theModule);
 }
