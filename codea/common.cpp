@@ -242,17 +242,20 @@ Value *FunctionExprAST::codegen() {
         builder.CreateStore(ai, namedValues[m_pars[i]]);
     }
 
-    if (m_stats.size() > 0) {
-        for (unsigned int i = 0; i < m_stats.size(); i++) {
-            Value *retVal = m_stats[i]->codegen();
-            if (retVal == 0) {
-                f->eraseFromParent();
-                return 0;
-            }
+    for (unsigned int i = 0; i < m_stats.size(); i++) {
+        Value *retVal = m_stats[i]->codegen();
+        if (retVal == 0) {
+            f->eraseFromParent();
+            return 0;
         }
-    } else {
-        builder.CreateRet(ConstantInt::get(getGlobalContext(), APInt(64, 0, true)));
     }
+
+    /* Add a dummy return value.
+       If we pass real return statement, we execute it and start a new (unreachable)
+       dummy block to avoid having to play around with block terminators. If that has
+       happened, the following ret is unreachable and will be optimized out.
+       If we haven't passed a return statement, default to returning 0. */
+    builder.CreateRet(ConstantInt::get(getGlobalContext(), APInt(64, 0, true)));
 
     verifyFunction(*f);
 
@@ -519,7 +522,13 @@ Value *UnaryExprAST::codegen() {
     switch (m_op) {
     case NOT: return builder.CreateNot(v, "nottmp");
     case UNARYMINUS: return builder.CreateNeg(v, "negtmp");
-    case RETURN: return builder.CreateRet(v);
+    case RETURN: {
+        v = builder.CreateRet(v);
+        Function *f = builder.GetInsertBlock()->getParent();
+        BasicBlock *dummyb = BasicBlock::Create(getGlobalContext(), "dummy", f);
+        builder.SetInsertPoint(dummyb);
+        return v;
+    }
     case DEREF:
         v = builder.CreateIntToPtr(v, Type::getInt64PtrTy(getGlobalContext()), "ptrtmp");
         return builder.CreateLoad(v, "drftmp");
