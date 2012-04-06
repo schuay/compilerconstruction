@@ -51,7 +51,7 @@ common.o: common.cpp common.hpp gram.tab.hpp
 hand-in: $(SOURCE)
 	@$(ECHO) "Handing in $(SOURCE)..."
 	$(RSYNC) $(RFLAGS) $(SOURCE) $(HOST):$(REMOTEDIR)
-	$(SSH) $(SFLAGS) $(HOST) 'cd $(REMOTEDIR); $(REMOTETEST) | egrep "(Test|Error)"'
+	$(SSH) $(SFLAGS) $(HOST) 'cd $(REMOTEDIR); $(REMOTETEST) 2>&1 | egrep "(Eingabe|\[Error|[0-9]+ Tests )"'
 
 clean:
 	rm -f lex.yy.cpp gram.tab.cpp gram.tab.hpp $(TARGET) \
