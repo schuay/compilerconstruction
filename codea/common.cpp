@@ -408,7 +408,42 @@ int IfExprAST::checkSymbols(Scope *scope) {
 }
 
 Value *IfExprAST::codegen() {
-    return 0; /* TODO */
+    Value *v = m_cond->codegen();
+    if (v == 0) {
+        return 0;
+    }
+
+    v = builder.CreateICmpNE(v, ConstantInt::get(getGlobalContext(), APInt(64, 0, true)), "ifcond");
+
+    Function *f = builder.GetInsertBlock()->getParent();
+
+    BasicBlock *thenb = BasicBlock::Create(getGlobalContext(), "then", f);
+    BasicBlock *mergeb = BasicBlock::Create(getGlobalContext(), "ifcont");
+
+    builder.CreateCondBr(v, thenb, mergeb);
+
+    /* THEN block. */
+    builder.SetInsertPoint(thenb);
+
+    Value *thenv = NULL;
+    for (unsigned int i = 0; i < m_then.size(); i++) {
+        thenv = m_then[i]->codegen();
+        if (thenv == 0) {
+            return 0;
+        }
+    }
+
+    builder.CreateBr(mergeb);
+
+    /* Merge block. */
+    f->getBasicBlockList().push_back(mergeb);
+    builder.SetInsertPoint(mergeb);
+
+    if (thenv == NULL) {
+        thenv = ConstantInt::get(getGlobalContext(), APInt(64, 0, true));
+    }
+
+    return thenv;
 }
 
 string BinaryExprAST::toString(int level) const {

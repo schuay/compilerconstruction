@@ -142,6 +142,11 @@ void process_funcdef(ExprAST *n) {
     }
     n->collectDefinedSymbols();
     int err = n->checkSymbols(NULL);
+    if (err) {
+        delete n;
+        exit(ERR_SCOPE);
+    }
+
     string s = n->toString(0);
     //printf("%s", s.c_str());
 
