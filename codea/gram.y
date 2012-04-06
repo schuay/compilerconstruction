@@ -70,7 +70,7 @@ labels      :   IDENT ':'
 stat        :   RETURN expr
                     { $<n>$ = new UnaryExprAST(RETURN, $<n>2); }
             |   GOTO IDENT
-                    { $<n>$ = new UnaryExprAST(GOTO, new SymbolExprAST($<sym>2, Label)); }
+                    { $<n>$ = new UnaryExprAST(GOTO, new AddrExprAST($<sym>2, Label)); }
             |   IF expr THEN stats END
                     { $<n>$ = new IfExprAST($<n>2, $<exprs>4); }
             |   VAR IDENT '=' expr

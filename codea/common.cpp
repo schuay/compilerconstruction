@@ -163,7 +163,7 @@ int AddrExprAST::checkSymbols(Scope *scope) {
 
 Value *AddrExprAST::codegen() {
     Value *v = namedValues[m_sym];
-    return (v != 0 ? v : errorV("Unknown variable name"));
+    return (v != 0 ? v : errorV("Unknown symbol"));
 }
 
 FunctionExprAST::FunctionExprAST(sym_t name, SymList *pars, ExprList *stats)
@@ -570,7 +570,20 @@ Value *UnaryExprAST::codegen() {
     case DEREF:
         v = builder.CreateIntToPtr(v, Type::getInt64PtrTy(getGlobalContext()), "ptrtmp");
         return builder.CreateLoad(v, "drftmp");
-    case GOTO: return errorV("GOTO not yet implemented"); /* TODO */
+    case GOTO: {
+        BasicBlock *blk = dynamic_cast<BasicBlock *>(v);
+        assert(blk != NULL);
+        v = builder.CreateBr(blk);
+
+        /* Similar to RETURN, a goto requires entering a new dummy block
+           to prevent duplicate terminators in one block. */
+
+        Function *f = builder.GetInsertBlock()->getParent();
+        BasicBlock *dummyb = BasicBlock::Create(getGlobalContext(), "dummy", f);
+        builder.SetInsertPoint(dummyb);
+
+        return v;
+    }
     default: return errorV("Unknown unary operator.");
     }
 }
