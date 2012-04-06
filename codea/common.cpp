@@ -486,7 +486,9 @@ Value *UnaryExprAST::codegen() {
     case UNARYMINUS: return builder.CreateNeg(v, "negtmp");
     case RETURN: return builder.CreateRet(v);
     case DEREF:
-    case GOTO: return errorV("{DEREF,GOTO} not yet implemented"); /* TODO */
+        v = builder.CreateIntToPtr(v, Type::getInt64PtrTy(getGlobalContext()), "ptrtmp");
+        return builder.CreateLoad(v, "drftmp");
+    case GOTO: return errorV("GOTO not yet implemented"); /* TODO */
     default: return errorV("Unknown unary operator.");
     }
 }
