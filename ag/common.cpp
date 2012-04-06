@@ -29,12 +29,12 @@ string SymbolExprAST::toString(int level) const {
 
 vector<Symbol> SymbolExprAST::collectDefinedSymbols() {
     vector<Symbol> v;
-    v.push_back(Symbol(m_sym, Var));
+    v.push_back(Symbol(m_sym, m_type));
     return v;
 }
 
 int SymbolExprAST::checkSymbols(Scope *scope) {
-    if (!scope->contains(m_sym, Var)) {
+    if (!scope->contains(m_sym, m_type)) {
         fprintf(stderr, "undefined reference to '%s'\n", syms.get(m_sym).c_str());
         return 1;
     }
