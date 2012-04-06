@@ -34,7 +34,7 @@ using std::map;
 /* Globals used during code generation. */
 Module *theModule = new Module("mainmodule", getGlobalContext());
 static IRBuilder<> builder(getGlobalContext());
-static map<int, Value*> namedValues;
+static map<int, AllocaInst*> namedValues;
 
 void printAsm() {
     InitializeNativeTarget();
@@ -70,6 +70,7 @@ void printAsm() {
     pm.add(createReassociatePass());
     pm.add(createGVNPass());
     pm.add(createCFGSimplificationPass());
+    pm.add(createPromoteMemoryToRegisterPass());
 
     /* Add pass to print asm. */
     tgm->addPassesToEmitFile(pm, frostr, TargetMachine::CGFT_AssemblyFile,
@@ -79,6 +80,11 @@ void printAsm() {
     pm.run(*theModule);
 
     delete tgm;
+}
+
+static AllocaInst *createEntryBlockAlloca(Function *f, sym_t s) {
+    IRBuilder<> b(&f->getEntryBlock(),f->getEntryBlock().begin());
+    return b.CreateAlloca(Type::getInt64Ty(getGlobalContext()), 0, syms.get(s).c_str());
 }
 
 Value *errorV(const char *str) { fprintf(stderr, "Error: %s\n", str); return 0; }
@@ -117,12 +123,14 @@ int SymbolExprAST::checkSymbols(Scope *scope) {
 Value *SymbolExprAST::codegen() {
     /* TODO: this also needs to work for labels. */
     Value *v = namedValues[m_sym];
-    return v ? v : errorV("Unknown variable name");
+    if (v == 0) {
+        return errorV("Unknown variable name");
+    }
+    return builder.CreateLoad(v, m_sym);
 }
 
 FunctionExprAST::FunctionExprAST(sym_t name, SymList *pars, ExprList *stats)
     : ExprAST(), m_name(name) {
-    /* TODO: pars are reversed */
     if (pars) {
         m_pars = pars->get();
         delete pars;
@@ -189,15 +197,20 @@ Value *FunctionExprAST::codegen() {
                                          ints, false);
     Function *f = Function::Create(ft, Function::ExternalLinkage,
                                    syms.get(m_name), theModule);
+
+    BasicBlock *bb = BasicBlock::Create(getGlobalContext(), "entry", f);
+    builder.SetInsertPoint(bb);
+
     unsigned int i = 0;
     for (Function::arg_iterator ai = f->arg_begin(); i != m_pars.size();
          ++ai, ++i) {
         ai->setName(syms.get(m_pars[i]));
-        namedValues[m_pars[i]] = ai;
-    }
 
-    BasicBlock *bb = BasicBlock::Create(getGlobalContext(), "entry", f);
-    builder.SetInsertPoint(bb);
+        /* Store args on the stack. */
+        AllocaInst *alloca = createEntryBlockAlloca(f, m_pars[i]);
+        builder.CreateStore(ai, alloca);
+        namedValues[m_pars[i]] = alloca;
+    }
 
     if (m_stats.size() > 0) {
         for (unsigned int i = 0; i < m_stats.size(); i++) {
