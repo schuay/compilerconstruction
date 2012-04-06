@@ -34,7 +34,7 @@ vector<Symbol> SymbolExprAST::collectDefinedSymbols() {
 }
 
 int SymbolExprAST::checkSymbols(Scope *scope) {
-    if (!scope->contains(m_sym)) {
+    if (!scope->contains(m_sym, Var)) {
         fprintf(stderr, "undefined reference to '%s'\n", syms.get(m_sym).c_str());
         return 1;
     }
@@ -330,13 +330,18 @@ void Scope::insertAll(vector<Symbol> v) {
     }
 }
 
-int Scope::contains(sym_t s) const {
-    for (unsigned int i = 0; i < m_vars.size(); i++) {
-        if (s == m_vars[i]) {
+int Scope::contains(sym_t s, enum SymType t) const {
+    const vector<sym_t> &v = (t == Var) ? m_vars : m_labels;
+    for (unsigned int i = 0; i < v.size(); i++) {
+        if (s == v[i]) {
             return 1;
         }
     }
     return 0;
+}
+
+int Scope::contains(sym_t s) const {
+    return (contains(s, Var) || contains(s, Label));
 }
 
 string Scope::toString() const {
