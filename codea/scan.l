@@ -45,7 +45,7 @@ and                     return AND;
 {lexem}                 return yytext[0];
 {hex_number}            yylval.val = strtol(yytext, NULL, 16); return NUM;
 {dec_number}            yylval.val = strtol(yytext + 1, NULL, 10); return NUM;
-{identifier}            yylval.sym = syms.insert(yytext); return ID;
+{identifier}            yylval.sym = syms.insert(yytext); return IDENT;
 {whitespace}+           ;
 {comment}               ;
 .                       { fprintf(stderr, "ERROR line %d: '%s'\n", yylloc.first_line, yytext); exit(1); }
