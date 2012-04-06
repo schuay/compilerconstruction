@@ -5,6 +5,7 @@
 #include <vector>
 #include <map>
 #include <sstream>
+#include <iostream>
 #include <llvm/DerivedTypes.h>
 #include <llvm/LLVMContext.h>
 #include <llvm/Support/IRBuilder.h>
@@ -30,6 +31,7 @@ using std::stringstream;
 using std::endl;
 using std::map;
 
+/* Globals used during code generation. */
 Module *theModule = new Module("mainmodule", getGlobalContext());
 static IRBuilder<> builder(getGlobalContext());
 static map<int, Value*> namedValues;
@@ -38,16 +40,24 @@ void printAsm() {
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
 
-    Triple trp("x86_64-linux-gnu");
-    theModule->setTargetTriple(trp.getTriple());
-
+    /* Create outstream. */
     raw_fd_ostream rostr(fileno(stdout), false);
     formatted_raw_ostream frostr(rostr);
 
+    /* Retrieve information about target machine. */
+    Triple trp("x86_64-linux-gnu");
+    theModule->setTargetTriple(trp.getTriple());
+
     string err;
     const Target *trg = TargetRegistry::lookupTarget(trp.getTriple(), err);
+    if (trg == NULL) {
+        std::cerr << err << endl;
+        exit(ERR_SCOPE);
+    }
+
     TargetMachine *tgm = trg->createTargetMachine(trp.getTriple(), "", "");
 
+    /* Create and configure pass manager. */
     PassManager pm;
     pm.add(new TargetData(theModule));
 
@@ -65,7 +75,10 @@ void printAsm() {
     tgm->addPassesToEmitFile(pm, frostr, TargetMachine::CGFT_AssemblyFile,
                             CodeGenOpt::Default, false);
 
+    /* Run passes. */
     pm.run(*theModule);
+
+    delete tgm;
 }
 
 Value *errorV(const char *str) { fprintf(stderr, "Error: %s\n", str); return 0; }
