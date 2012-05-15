@@ -465,6 +465,9 @@ Value *IfExprAST::codegen() {
         namedValues[variables[i]] = alloca;
     }
 
+    /* The specification is to execute the 'then' section iff the LSB of the 'if' value
+     * equals 1. Mask the 'if' value to the LSB first, then compare it to 0. */
+    v = builder.CreateAnd(v, ConstantInt::get(getGlobalContext(), APInt(64, 1, true)), "ifbit");
     v = builder.CreateICmpNE(v, ConstantInt::get(getGlobalContext(), APInt(64, 0, true)), "ifcond");
 
     BasicBlock *thenb = BasicBlock::Create(getGlobalContext(), "then", f);
