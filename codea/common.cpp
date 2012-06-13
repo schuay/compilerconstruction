@@ -55,7 +55,7 @@ void printAsm() {
         exit(ERR_SCOPE);
     }
 
-    TargetMachine *tgm = trg->createTargetMachine(trp.getTriple(), "", "");
+    TargetMachine *tgm = trg->createTargetMachine(trp.getTriple(), "", "", TargetOptions());
 
     /* Create and configure pass manager. */
     PassManager pm;
@@ -74,7 +74,7 @@ void printAsm() {
 
     /* Add pass to print asm. */
     tgm->addPassesToEmitFile(pm, frostr, TargetMachine::CGFT_AssemblyFile,
-                            CodeGenOpt::Default, false);
+                             false);
 
     /* Run passes. */
     pm.run(*theModule);
